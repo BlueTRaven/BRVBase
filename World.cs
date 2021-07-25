@@ -7,7 +7,7 @@ using Veldrid;
 
 namespace BRVBase
 {
-	public class World
+	public abstract class World
 	{
 		private AssetHandle<TiledMap> map;
 

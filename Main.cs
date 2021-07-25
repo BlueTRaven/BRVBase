@@ -11,7 +11,7 @@ using Veldrid.Sdl2;
 
 namespace BRVBase
 {
-	public class Main : Game
+	public abstract class Main : Game
 	{
 		public static Input Input;
 
