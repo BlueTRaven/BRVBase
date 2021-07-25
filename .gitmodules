@@ -1,0 +1,6 @@
+[submodule "FontStashSharp"]
+	path = FontStashSharp
+	url = https://github.com/rds1983/FontStashSharp.git
+[submodule "TiledSharp"]
+	path = TiledSharp
+	url = https://github.com/marshallward/TiledSharp.git
