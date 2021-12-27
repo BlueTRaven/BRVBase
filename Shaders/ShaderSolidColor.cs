@@ -14,14 +14,14 @@ namespace BRVBase
 		private Shader vertexShader;
 		private Shader fragmentShader;
 
-		public ShaderSolidColor(GraphicsDevice device, ResourceFactory factory) : base(device, factory, 1)
+		public ShaderSolidColor(AssetManager assetManager, GraphicsDevice device, ResourceFactory factory) : base(assetManager, device, factory, 1)
 		{
 		}
 
 		public override Shader[] LoadShaders()
 		{
-			AssetHandle<ShaderWrapper> vertex = Main.AssetManager.ShaderLoader.GetHandle("vertex_generic");
-			AssetHandle<ShaderWrapper> fragment = Main.AssetManager.ShaderLoader.GetHandle("frag_solidcolor");
+			AssetHandle<ShaderWrapper> vertex = assetManager.ShaderLoader.GetHandle("vertex_generic");
+			AssetHandle<ShaderWrapper> fragment = assetManager.ShaderLoader.GetHandle("frag_solidcolor");
 
 			ShaderDescription vertexDesc = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(vertex.Get().Content), "main");
 			ShaderDescription fragDesc = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(fragment.Get().Content), "main");

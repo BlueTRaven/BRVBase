@@ -16,7 +16,7 @@ namespace BRVBase
 {
 	public static class Util
 	{
-		public static bool CheckLOS(World world, Vector2 startPosition, Vector2 endPosition)
+		public static bool CheckLOS(TiledLayer layer, Vector2 startPosition, Vector2 endPosition)
 		{
 			Veldrid.Point start = new Veldrid.Point((int)startPosition.X / 16, (int)startPosition.Y / 16);// world.GetMap().GetLayer("collision").GetTile();
 			Veldrid.Point end = new Veldrid.Point((int)endPosition.X / 16, (int)endPosition.Y / 16);//GetTile(world, endPosition);
@@ -25,10 +25,10 @@ namespace BRVBase
 
 			foreach (Veldrid.Point pos in path)
 			{
-				if (!world.GetMap().Get().GetLayer("collision").IsValidTile(pos))
+				if (!layer.IsValidTile(pos))
 					continue;
 
-				if (world.GetMap().Get().GetTile("collision", pos).valid)
+				if (layer.GetTile(pos).valid)
 					return false;
 			}
 
@@ -86,7 +86,8 @@ namespace BRVBase
 		{
 			foreach (Assembly assemb in AppDomain.CurrentDomain.GetAssemblies())
 			{
-				foreach (Type type in assemb.GetTypes())
+				var types = assemb.GetTypes();
+				foreach (Type type in types)
 				{
 					if (type.Name == name)
 						return type;
@@ -197,10 +198,20 @@ namespace BRVBase
 			}
 		}
 
-		public static RgbaFloat ColorFromInts(int r, int g, int b)
+		public static RgbaFloat ColorFromInt(int r, int g, int b)
 		{
 			const float max = 255;
 			return new RgbaFloat((float)r / max, (float)g / max, (float)b / max, 1);
+		}
+
+		public static RgbaFloat ColorFromByte(RgbaByte b)
+		{
+			return new RgbaFloat(b.R / 255f, b.G / 255f, b.B / 255f, b.A / 255f);
+		}
+
+		public static RgbaFloat ColorFromByte(byte r, byte g, byte b)
+		{
+			return new RgbaFloat(r / 255f, g / 255f, b / 255f, 1f);
 		}
 
 		public static T MultiLerp<T>(float t, Func<T, T, float, T> lerpFunc, params T[] values)

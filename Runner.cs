@@ -33,8 +33,7 @@ namespace BRVBase
 
 		private Sdl2Window window;
 
-		private int frames;
-		public static double FramesPerSecond;
+		public static FrameCounter FrameCounter;
 
 		private StartupSettings settings;
 
@@ -42,14 +41,16 @@ namespace BRVBase
 
 		public Runner(Game game, StartupSettings settings)
 		{
+			FrameCounter = new FrameCounter();
+
 			FrameSemaphore = new SemaphoreSlim(1);
 
 			WindowCreateInfo ci = new WindowCreateInfo()
 			{
 				X = 64,
 				Y = 64,
-				WindowWidth = Constants.WINDOW_WIDTH,
-				WindowHeight = Constants.WINDOW_HEIGHT,
+				WindowWidth = (int)Constants.WINDOW_WIDTH,
+				WindowHeight = (int)Constants.WINDOW_HEIGHT,
 				WindowTitle = "Test",
 			};
 
@@ -81,7 +82,7 @@ namespace BRVBase
 
 			const double ACCUMULATOR_DISCARD = 1;
 
-			while (window.Exists && !BRVBase.Main.Exit && !device.SwapchainFramebuffer.IsDisposed)
+			while (window.Exists && !BRVBase.Game.Exit && !device.SwapchainFramebuffer.IsDisposed)
 			{
 				window.PumpEvents();
 
@@ -105,6 +106,8 @@ namespace BRVBase
 						if (window.Exists)
 							Draw(game, delta);
 						else exit = true;
+
+						FrameCounter.Update(dt.Delta);
 					}
 				}
 				else
@@ -114,15 +117,13 @@ namespace BRVBase
 					if (window.Exists)
 						Draw(game, delta);
 					else exit = true;
+
+					FrameCounter.Update(delta.Delta);
 				}
 
 				double newTotalTime = watch.Elapsed.TotalSeconds;
 				delta = new DeltaTime(newTotalTime, newTotalTime - totalTime);
 				totalTime = newTotalTime;
-
-				frames++;
-
-				FramesPerSecond = delta.Now / (double)frames;
 
 				if (exit)
 					break;

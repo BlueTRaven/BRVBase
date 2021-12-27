@@ -118,15 +118,15 @@ namespace BRVBase
 		{
 		}
 
-		protected override PathfindNodeSet Load(string name)
+		protected override PathfindNodeSet Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				PathfindNodeSet nodeSet = new PathfindNodeSet(name);
+				PathfindNodeSet nodeSet = new PathfindNodeSet(file.Name);
 
-				string raw = File.ReadAllText(baseDir + name + extension);
+				string raw = File.ReadAllText(file.FullPath);
 
 				var tokens = GetTokens(raw);
 

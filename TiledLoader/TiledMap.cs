@@ -19,6 +19,8 @@ namespace BRVBase
 
 		public Dictionary<string, string> Properties = new Dictionary<string, string>();
 
+		public TiledTile[] Tileset;
+
 		public int width, height;
 		public int tileWidth, tileHeight;
 
@@ -66,6 +68,18 @@ namespace BRVBase
 		public List<TiledLayer> GetLayers()
 		{
 			return Layers.Values.ToList();
+		}
+
+		public void SetTileset(Dictionary<int, TiledTile> tileset)
+		{
+			int max = tileset.Max(x => x.Value.tilesetId) + 1;
+
+			this.Tileset = new TiledTile[max];
+
+			foreach (TiledTile tile in tileset.Values)
+			{
+				Tileset[tile.tilesetId] = tile;
+			}
 		}
 
 		public void SetTile(string layer, Point pos, TiledTile tileType, bool flipH = false, bool flipV = false)

@@ -35,19 +35,17 @@ namespace BRVBase
 		private bool defaultUniformsDirty;
 		private bool definedUniformsDirty;
 
-		//Does this shader store the uniform resolution?
-		public readonly bool StoresResolution;
-
 		protected readonly ResourceFactory factory;
+		protected readonly AssetManager assetManager;
 		protected readonly GraphicsDevice device;
 
 		protected VertexLayoutDescription vertexDefinition;
 
-		public ShaderBase(GraphicsDevice device, ResourceFactory factory, int numTextures, bool storesResolution = false)
+		public ShaderBase(AssetManager assetManager, GraphicsDevice device, ResourceFactory factory, int numTextures)
 		{
+			this.assetManager = assetManager;
 			this.device = device;
 			this.factory = factory;
-			this.StoresResolution = storesResolution;
 
 			shaders = LoadShaders();
 
@@ -95,22 +93,9 @@ namespace BRVBase
 			defaultUniformsDirty = true;
 		}
 
-		public void SetResolution(CommandList commandList, Vector2 resolution)
-		{
-			if (!StoresResolution)
-				throw new Exception("Cannot set resolution as the shader does not support it!");
-
-			if (transformBuffer == null)
-				CreateDefaultBuffer();
-
-			commandList.UpdateBuffer(transformBuffer, 64, resolution);
-		}
-
 		private void CreateDefaultBuffer()
 		{
 			DeviceBufferBuilder builder = new DeviceBufferBuilder(factory).Mat4x4();
-			if (StoresResolution)
-				builder.Vector2();
 
 			transformBuffer = builder.Build();
 		}

@@ -52,6 +52,7 @@ namespace BRVBase
 
 	public abstract class AssetLoader<TAsset> where TAsset : IAsset
 	{
+		private Dictionary<string, LoadableFile> loadableFiles;
 		private Dictionary<string, AssetHandle<TAsset>> handles = new Dictionary<string, AssetHandle<TAsset>>();
 		private Dictionary<string, TAsset> assets = new Dictionary<string, TAsset>();
 
@@ -87,6 +88,14 @@ namespace BRVBase
 			watcher.Filter = "";
 
 			watcher.Changed += OnChanged;
+
+			//populate loadable files
+			GetAllLoadableFiles();
+		}
+
+		public bool Exists(string name)
+		{
+			return GetRaw(name) != null;
 		}
 
 		public AssetHandle<TAsset> GetHandle(string name)
@@ -100,7 +109,7 @@ namespace BRVBase
 		public TAsset GetRaw(string name)
 		{
 			if (!assets.ContainsKey(name))
-				assets.Add(name, Load(name));
+				assets.Add(name, Load(loadableFiles[name]));
 
 			return assets[name];
 		}
@@ -164,6 +173,67 @@ namespace BRVBase
 
 		}
 
-		protected abstract TAsset Load(string name);
+		protected abstract TAsset Load(LoadableFile file);
+
+		public string GetDirectory()
+		{
+			return baseDir;
+		}
+
+		public string GetExtension()
+		{
+			return extension;
+		}
+
+		public LoadableFile[] GetAllLoadableFiles()
+		{
+			if (loadableFiles == null)
+			{
+				loadableFiles = new Dictionary<string, LoadableFile>();
+
+				DirectoryInfo di = new DirectoryInfo(baseDir);
+				var fi = di.GetFiles("*" + extension, SearchOption.AllDirectories);
+
+				List<LoadableFile> copyList = new List<LoadableFile>();
+				//loadableFiles = new string[fi.Length];
+
+				for (int i = 0; i < fi.Length; i++)
+				{
+					FileInfo fileInfo = fi[i];
+
+					if (fileInfo.Extension != extension)
+						continue;
+
+					copyList.Add(new LoadableFile(Path.GetFileNameWithoutExtension(fileInfo.Name), fileInfo.FullName));
+				}
+
+				foreach (LoadableFile file in copyList)
+				{
+					loadableFiles.Add(file.Name, file);
+				}
+			}
+
+			return loadableFiles.Values.ToArray();
+		}
+
+		protected bool FileExists(string baseDir, string name, out string fullPath)
+		{
+			if (!File.Exists(baseDir + name + extension))
+			{
+				foreach (string dir in Directory.EnumerateDirectories(baseDir))
+				{
+					if (FileExists(dir + "\\", name, out fullPath))
+						return true;
+				}
+
+				fullPath = "";
+				return false;
+			}
+			else
+			{
+				fullPath = baseDir + name + extension;
+				return true;
+			}
+		}
 	}
 }

@@ -81,16 +81,16 @@ namespace BRVBase
 			};
 		}
 
-		protected override DialogueAsset Load(string name)
+		protected override DialogueAsset Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				var data = JsonSerializer.Deserialize<DialogueAssetData>(File.ReadAllText(baseDir + name + extension), options);
+				var data = JsonSerializer.Deserialize<DialogueAssetData>(File.ReadAllText(baseDir + file + extension), options);
 				data.Cleanup();
 
-				return new DialogueAsset(name, data);
+				return new DialogueAsset(file.Name, data);
 			}
 
 			return null;

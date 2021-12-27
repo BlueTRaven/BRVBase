@@ -7,13 +7,31 @@ using System.Threading.Tasks;
 
 namespace BRVBase
 {
-	public class Camera
+	public class Camera2D
 	{
-		public Vector2 position;
+		public Vector2 Position;
+		private Vector2 shakeOffset;
+
+		private float timer;
+
+		public void SetShake(float time)
+		{
+			this.timer = time;
+		}
+
+		public void Update(DeltaTime delta, Random rand)
+		{
+			if (timer > 0)
+			{
+				timer -= (float)delta.Delta;
+				shakeOffset = new Vector2(rand.Next(-4, 4), rand.Next(-4, 4));
+			}
+			else shakeOffset = Vector2.Zero;
+		}
 		
 		public Matrix4x4 GetMatrix()
 		{
-			return Matrix4x4.CreateTranslation(-new Vector3(position, 0));
+			return Matrix4x4.CreateTranslation(-new Vector3(Position + shakeOffset, 0));
 		}
 
 		public Matrix4x4 GetScaledMatrix()

@@ -19,7 +19,7 @@ namespace BRVBase
 		private Vector2 mousePosition;
 		public Vector2 MousePosition => mousePosition;
 
-		private struct KeyboardState
+		public struct KeyboardState
 		{
 			public bool[] keys;
 			public bool[] mouseButtons;
@@ -48,6 +48,11 @@ namespace BRVBase
 		public void Update()
 		{
 			CopyKeyboardState(ref previousKeyboardState, ref currentKeyboardState);
+		}
+
+		public KeyboardState GetState()
+		{
+			return currentKeyboardState;
 		}
 
 		private void CopyKeyboardState(ref KeyboardState to, ref KeyboardState from)

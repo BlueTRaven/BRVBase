@@ -98,13 +98,27 @@ namespace BRVBase
 			program.GetShader().SetViewProj(commandList, viewProj);
 		}
 
-		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color)
+		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color, bool flipX = false, bool flipY = false)
 		{
-			Draw(transform, texture, new Rectangle(0, 0, texture.width, texture.height), color);
+			Draw(transform, texture, new Rectangle(0, 0, texture.width, texture.height), color, flipX, flipY);
 		}
 
-		public void Draw(Matrix3x2 transform, TextureAndSampler texture, Rectangle sourceRect, RgbaFloat color)
+		public void Draw(Matrix3x2 transform, TextureAndSampler texture, Rectangle sourceRect, RgbaFloat color, bool flipX = false, bool flipY = false)
 		{
+			if (!begin)
+				throw new Exception();
+
+			if (flipX)
+			{
+				sourceRect.X = sourceRect.X + sourceRect.Width;
+				sourceRect.Width = -sourceRect.Width;
+			}
+			if (flipY)
+			{
+				sourceRect.Y = sourceRect.Y + sourceRect.Height;
+				sourceRect.Height = -sourceRect.Height;
+			}
+
 			inputInstance.Add(new InputInstance() 
 			{
 				textureType = TextureType.OneTexture,
@@ -117,6 +131,9 @@ namespace BRVBase
 
 		public void Draw(Matrix3x2 transform, BindableTextureCollection textureCollection, Rectangle sourceRect, RgbaFloat color)
 		{
+			if (!begin)
+				throw new Exception();
+
 			inputInstance.Add(new InputInstance()
 			{
 				textureType = TextureType.TextureCollection,
@@ -125,6 +142,68 @@ namespace BRVBase
 				sourceRect = sourceRect,
 				color = color
 			});
+		}
+
+		public void DrawLine(Vector2 a, Vector2 b, float width, TextureAndSampler texture, RgbaFloat color, bool center = false)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 dir = b - a;
+			float dist = dir.Length();
+
+			float angR = MathF.Atan2(dir.Y, dir.X);
+
+			Matrix3x2 transform = Matrix3x2.Identity;
+			transform *= Matrix3x2.CreateScale(dist / texture.width, width);
+			if (center)
+				transform *= Matrix3x2.CreateTranslation(0, -((texture.height * width) / 2));
+			transform *= Matrix3x2.CreateRotation(angR);
+			transform *= Matrix3x2.CreateTranslation(a);
+
+			inputInstance.Add(new InputInstance()
+			{
+				textureType = TextureType.OneTexture,
+				texture = texture,
+				transform = transform,
+				sourceRect = new Rectangle(0, 0, texture.width, texture.height),
+				color = color
+			});
+		}
+
+		public void DrawRectangle(Rectangle rect, float width, TextureAndSampler texture, RgbaFloat color)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 a = new Vector2(rect.Left, rect.Top);
+			Vector2 b = new Vector2(rect.Right, rect.Top);
+			Vector2 c = new Vector2(rect.Right, rect.Bottom);
+			Vector2 d = new Vector2(rect.Left, rect.Bottom);
+
+			DrawLine(a, b, width, texture, color);
+			DrawLine(b, c, width, texture, color);
+			DrawLine(c, d, width, texture, color);
+			DrawLine(d, a, width, texture, color);
+		}
+
+		public void DrawHollowCircle(Vector2 point, float radius, int segments, float width, TextureAndSampler texture, RgbaFloat color)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 last = new Vector2(point.X + radius, point.Y);
+
+			for (int i = 0; i < segments + 1; i++)
+			{
+				float ang = (((float)i / (float)segments) * 360f) * (float)Constants.DEG_TO_RAD;
+
+				Vector2 vec = new Vector2(MathF.Cos(ang), MathF.Sin(ang)) * radius + point;
+
+				DrawLine(last, vec, width, texture, color);
+
+				last = vec;
+			}
 		}
 
 		private void AddVertex(int index, Vector2 uv, Vector2 size, in Matrix3x2 transform, RgbaFloat color, float depth = 0)

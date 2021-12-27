@@ -13,8 +13,6 @@ namespace BRVBase
 		public readonly AssetLoaderFont FontLoader;
 		public readonly AssetLoaderTiledMap MapLoader;
 		public readonly AssetLoaderShader ShaderLoader;
-		public readonly AssetLoaderPathfindNodeSet NodeSetsLoader;
-		public readonly AssetLoaderDialogue DialogueLoader;
 
 		public AssetManager(GraphicsDevice device, ResourceFactory factory)
 		{

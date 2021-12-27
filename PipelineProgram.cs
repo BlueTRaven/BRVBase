@@ -9,6 +9,9 @@ namespace BRVBase
 {
 	public class PipelineProgram
 	{
+		// Set this to set the default error shader.
+		public static ShaderBase ErrorShader;
+
 		public readonly Framebuffer FrameBuffer;
 		private readonly ResourceFactory factory;
 		private ShaderBase shader;
@@ -21,20 +24,20 @@ namespace BRVBase
 
 		private BlendStateDescription? blendState;
 		
-		public PipelineProgram(Framebuffer frameBuffer, ResourceFactory factory, ShaderBase shader, BlendStateDescription? blendState = null)
+		public PipelineProgram(AssetManager assetManager, Framebuffer frameBuffer, ResourceFactory factory, ShaderBase shader, BlendStateDescription? blendState = null)
 		{
 			this.FrameBuffer = frameBuffer;
 			this.factory = factory;
 			this.shader = shader;
 			this.blendState = blendState;
 
-			Main.AssetManager.ShaderLoader.OnAssetChanged += OnShaderAssetChanged;
+			assetManager.ShaderLoader.OnAssetChanged += OnShaderAssetChanged;
 		}
 
 		public ShaderBase GetShader()
 		{
 			if (useErrorShader)
-				return Main.ErrorShader;
+				return ErrorShader;
 			else return shader;
 		}
 

@@ -33,6 +33,15 @@ namespace BRVBase
 			this.height = (int)texture.Height;
 		}
 
+		public TextureAndSampler(Framebuffer framebuffer, Sampler sampler)
+		{
+			this.texture = framebuffer.ColorTargets[0].Target;
+			this.sampler = sampler;
+
+			this.width = (int)texture.Width;
+			this.height = (int)texture.Height;
+		}
+
 		public string GetName()
 		{
 			return texture.Name;

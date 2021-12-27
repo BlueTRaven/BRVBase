@@ -21,15 +21,15 @@ namespace BRVBase
 			this.factory = factory;
 		}
 
-		protected override TextureAndSampler Load(string name)
+		protected override TextureAndSampler Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				ImageSharpTexture image = new ImageSharpTexture(baseDir + name + extension);
+				ImageSharpTexture image = new ImageSharpTexture(file.FullPath);
 				var texture = image.CreateDeviceTexture(device, factory);
-				texture.Name = name;
+				texture.Name = file.Name;
 
 				return new TextureAndSampler(texture, device.PointSampler);
 			}

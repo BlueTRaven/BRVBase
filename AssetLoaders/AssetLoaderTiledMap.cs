@@ -16,13 +16,13 @@ namespace BRVBase
 			loader = new TiledLoader();
 		}
 
-		protected override TiledMap Load(string name)
+		protected override TiledMap Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				return loader.LoadMap(new TiledSharp.TmxMap(baseDir + name + extension));
+				return loader.LoadMap(new TiledSharp.TmxMap(file.FullPath), file.Name);
 			}
 
 			return null;

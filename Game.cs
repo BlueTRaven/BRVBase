@@ -9,7 +9,7 @@ using Veldrid.Sdl2;
 
 namespace BRVBase
 {
-	public class Game
+	public abstract class Game
 	{
 		public static bool Exit;
 

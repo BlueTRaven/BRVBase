@@ -13,14 +13,14 @@ namespace BRVBase.Shaders
 		private Shader vertexShader;
 		private Shader fragmentShader;
 
-		public ShaderError(GraphicsDevice device, ResourceFactory factory) : base(device, factory, 0)
+		public ShaderError(AssetManager assetManager, GraphicsDevice device, ResourceFactory factory) : base(assetManager, device, factory, 0)
 		{
 		}
 
 		public override Shader[] LoadShaders()
 		{
-			AssetHandle<ShaderWrapper> vertex = Main.AssetManager.ShaderLoader.GetHandle("vertex_error");
-			AssetHandle<ShaderWrapper> fragment = Main.AssetManager.ShaderLoader.GetHandle("frag_error");
+			AssetHandle<ShaderWrapper> vertex = assetManager.ShaderLoader.GetHandle("vertex_error");
+			AssetHandle<ShaderWrapper> fragment = assetManager.ShaderLoader.GetHandle("frag_error");
 
 			ShaderDescription vertexDesc = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(vertex.Get().Content), "main");
 			ShaderDescription fragDesc = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(fragment.Get().Content), "main");
