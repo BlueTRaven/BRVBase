@@ -38,7 +38,8 @@ namespace BRVBase
 		private DeviceBuffer indexBuffer;
 		private readonly ResourceFactory factory;
 		private readonly GraphicsDevice device;
-		private readonly CommandList commandList;
+		private CommandList givenCommandList;
+		private readonly CommandList ourCommandList;
 		private readonly Fence fence;
 
 		private int currentVertexBufferSize;
@@ -70,8 +71,33 @@ namespace BRVBase
 			this.device = device;
 			this.factory = factory;
 
-			commandList = factory.CreateCommandList();
+			ourCommandList = factory.CreateCommandList();
 			fence = factory.CreateFence(false);
+		}
+
+		public void Begin(CommandList commandList, Matrix4x4 viewProj, PipelineProgram program, RgbaFloat? clearColor = null)
+		{
+			if (begin)
+			{
+				throw new Exception();
+			}
+
+			begin = true;
+			lastIndex = 0;
+
+			this.program = program;
+
+			givenCommandList = commandList;
+			//givenCommandList.Begin();
+			program.Bind(givenCommandList);
+
+			if (clearColor.HasValue)
+			{
+				givenCommandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
+			}
+
+			this.viewProj = viewProj;
+			program.GetShader().SetViewProj(givenCommandList, viewProj);
 		}
 
 		public void Begin(Matrix4x4 viewProj, PipelineProgram program, RgbaFloat? clearColor = null)
@@ -86,16 +112,17 @@ namespace BRVBase
 
 			this.program = program;
 
-			commandList.Begin();
-			program.Bind(commandList);
+			givenCommandList = ourCommandList;
+			givenCommandList.Begin();
+			program.Bind(givenCommandList);
 
 			if (clearColor.HasValue)
 			{
-				commandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
+				givenCommandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
 			}
 
 			this.viewProj = viewProj;
-			program.GetShader().SetViewProj(commandList, viewProj);
+			program.GetShader().SetViewProj(givenCommandList, viewProj);
 		}
 
 		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color, bool flipX = false, bool flipY = false)
@@ -171,7 +198,12 @@ namespace BRVBase
 			});
 		}
 
-		public void DrawRectangle(Rectangle rect, float width, TextureAndSampler texture, RgbaFloat color)
+		public void DrawRectangle(Rectangle rect, TextureAndSampler texture, RgbaFloat color)
+        {
+			Draw(Matrix3x2.CreateScale(rect.Width, rect.Height) * Matrix3x2.CreateTranslation(rect.X, rect.Y), texture, color);
+        }
+
+		public void DrawHollowRectangle(Rectangle rect, float width, TextureAndSampler texture, RgbaFloat color)
 		{
 			if (!begin)
 				throw new Exception();
@@ -238,8 +270,12 @@ namespace BRVBase
 			if (inputInstance.Count > 0)
 				ReallyDraw();
 
-			commandList.End();
-			device.SubmitCommands(commandList, fence);
+			//Only end the command list if it is ours. 
+			if (givenCommandList == ourCommandList)
+			{
+				givenCommandList.End();
+				device.SubmitCommands(givenCommandList, fence);
+			}
 
 			begin = false;
 		}
@@ -311,7 +347,7 @@ namespace BRVBase
 			else if (currentTextureType == TextureType.TextureCollection)
 				currentTextureCollection.SetTextures(program.GetShader());
 
-			program.BindShader(commandList);
+			program.BindShader(givenCommandList);
 
 			if (vertexBuffer == null || indexBuffer == null || vertices.Buffer.Length > currentVertexBufferSize || indices.Buffer.Length > currentIndexBufferSize)
 			{
@@ -329,13 +365,13 @@ namespace BRVBase
 				indexBuffer = factory.CreateBuffer(new BufferDescription((uint)(sizeof(uint) * currentIndexBufferSize), BufferUsage.IndexBuffer));
 			}
 
-			commandList.UpdateBuffer(vertexBuffer, 0, vertices.Buffer);
-			commandList.UpdateBuffer(indexBuffer, 0, indices.Buffer);
+			givenCommandList.UpdateBuffer(vertexBuffer, 0, vertices.Buffer);
+			givenCommandList.UpdateBuffer(indexBuffer, 0, indices.Buffer);
 
-			commandList.SetVertexBuffer(0, vertexBuffer);
-			commandList.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
+			givenCommandList.SetVertexBuffer(0, vertexBuffer);
+			givenCommandList.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
 
-			commandList.DrawIndexed((uint)indices.Length, (uint)(indices.Length / 3), 0, 0, 0);
+			givenCommandList.DrawIndexed((uint)indices.Length);
 
 			vertices.Clear();
 			indices.Clear();
