@@ -31,7 +31,7 @@ namespace BRVBase
 		private GraphicsDevice device;
 		private ResourceFactory factory;
 
-		private Sdl2Window window;
+		public static Sdl2Window Window;
 
 		private int frames;
 		public static double FramesPerSecond;
@@ -53,19 +53,23 @@ namespace BRVBase
 				WindowTitle = "Test",
 			};
 
-			window = VeldridStartup.CreateWindow(ci);
+			Window = VeldridStartup.CreateWindow(ci);
+			Window.Resized += () => { WindowSizeChanged(game); };
 
 			GraphicsDeviceOptions options = new GraphicsDeviceOptions()
 			{
 				PreferStandardClipSpaceYDirection = true,
-				PreferDepthRangeZeroToOne = true,
+				PreferDepthRangeZeroToOne = false,
+#if DEBUG
+				Debug = false,
+#endif
 			};
 
-			device = VeldridStartup.CreateGraphicsDevice(window, options, settings.Backend);
+			device = VeldridStartup.CreateGraphicsDevice(Window, options, settings.Backend);
 			factory = device.ResourceFactory;
 
 			game.LoadContent(device, factory);
-			game.Initialize(window);
+			game.Initialize(Window);
 
 			this.settings = settings;
 		}
@@ -81,10 +85,8 @@ namespace BRVBase
 
 			const double ACCUMULATOR_DISCARD = 1;
 
-			while (window.Exists && !BRVBase.Main.Exit && !device.SwapchainFramebuffer.IsDisposed)
+			while (Window.Exists && !device.SwapchainFramebuffer.IsDisposed)
 			{
-				window.PumpEvents();
-
 				if (settings.UseFixedTimestep)
 				{
 					accumulatedTimestep = 0;
@@ -100,18 +102,29 @@ namespace BRVBase
 						accumulatedTimestep += settings.FixedTimestep;
 
 						DeltaTime dt = new DeltaTime(delta.Now + accumulatedTimestep, settings.FixedTimestep);
+						
+						var input = Window.PumpEvents();
+						Input.Update(Window, input, delta);
+						
 						Update(game, dt);
 
-						if (window.Exists)
+						Input.PostFrameUpdate();
+
+						if (Window.Exists)
 							Draw(game, delta);
 						else exit = true;
 					}
 				}
 				else
 				{
-					Update(game, delta);
+					var input = Window.PumpEvents();
+					Input.Update(Window, input, delta);
 
-					if (window.Exists)
+					Update(game, delta);
+					
+					Input.PostFrameUpdate();
+
+					if (Window.Exists)
 						Draw(game, delta);
 					else exit = true;
 				}
@@ -130,7 +143,7 @@ namespace BRVBase
 
 			watch.Stop();
 			Console.WriteLine("Ran for " + watch.Elapsed.TotalSeconds.ToString() + " seconds.");
-			window.Close();
+			Window.Close();
 			device.Dispose();
 		}
 
@@ -152,6 +165,14 @@ namespace BRVBase
 			FrameSemaphore.Release();
 
 			device.SwapBuffers();
+		}
+
+		private void WindowSizeChanged(Game game)
+		{
+			FrameSemaphore.Wait();
+			device.ResizeMainWindow((uint)Window.Width, (uint)Window.Height);
+			game.WindowResized(Window.Width, Window.Height);
+			FrameSemaphore.Release();
 		}
 	}
 }

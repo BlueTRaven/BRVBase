@@ -11,12 +11,12 @@ namespace BRVBase
 	{
 		private TiledLoader loader;
 
-		public AssetLoaderTiledMap() : base(Constants.ASSETS_BASE_DIR + "Maps/", ".tmx")
+		public AssetLoaderTiledMap() : base(new string[] { "../Asssets/Maps/", "./Assets/Maps/" }, ".tmx")
 		{
 			loader = new TiledLoader();
 		}
 
-		protected override TiledMap Load(string name)
+		protected override TiledMap Load(string baseDir, string name)
 		{
 			if (File.Exists(baseDir + name + extension))
 			{

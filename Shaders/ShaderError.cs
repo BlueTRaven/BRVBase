@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BRVBase.Services;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ using Veldrid.SPIRV;
 
 namespace BRVBase.Shaders
 {
+	[Shader("vertex_error", "frag_error")]
 	public class ShaderError : ShaderBase
 	{
 		private Shader vertexShader;
@@ -19,8 +21,8 @@ namespace BRVBase.Shaders
 
 		public override Shader[] LoadShaders()
 		{
-			AssetHandle<ShaderWrapper> vertex = Main.AssetManager.ShaderLoader.GetHandle("vertex_error");
-			AssetHandle<ShaderWrapper> fragment = Main.AssetManager.ShaderLoader.GetHandle("frag_error");
+			(AssetHandle<ShaderWrapper> vertex,
+			AssetHandle<ShaderWrapper> fragment) = Util.GetAttribute<ShaderAttribute>(this).GetShaders();
 
 			ShaderDescription vertexDesc = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(vertex.Get().Content), "main");
 			ShaderDescription fragDesc = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(fragment.Get().Content), "main");

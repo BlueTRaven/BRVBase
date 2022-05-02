@@ -10,7 +10,7 @@ namespace BRVBase
 {
 	public class SpriteBatch
 	{
-		public enum TextureType 
+		public enum TextureType
 		{
 			OneTexture,
 			TextureCollection
@@ -105,7 +105,7 @@ namespace BRVBase
 
 		public void Draw(Matrix3x2 transform, TextureAndSampler texture, Rectangle sourceRect, RgbaFloat color)
 		{
-			inputInstance.Add(new InputInstance() 
+			inputInstance.Add(new InputInstance()
 			{
 				textureType = TextureType.OneTexture,
 				transform = transform,
@@ -130,7 +130,7 @@ namespace BRVBase
 		private void AddVertex(int index, Vector2 uv, Vector2 size, in Matrix3x2 transform, RgbaFloat color, float depth = 0)
 		{
 			vertices.Add(new DefaultVertexDefinitions.VertexPositionTextureColor(
-				Vector2.Transform(vertexTemplate[index] * size, transform), 
+				Vector2.Transform(vertexTemplate[index] * size, transform),
 				uv, color));
 		}
 
@@ -146,23 +146,42 @@ namespace BRVBase
 			lastIndex += 4;
 		}
 
-		public void End()
+		public CommandList End(bool submitImmediately = true)
 		{
 			if (!begin)
 			{
 				//ERROR
-				return;
+				return null;
 			}
 
 			//It's valid to call begin then end immediately, without drawing anything.
 			//Don't flush if that's the case.
 			if (inputInstance.Count > 0)
+			{
 				ReallyDraw();
 
-			commandList.End();
-			device.SubmitCommands(commandList, fence);
+				if (submitImmediately)
+				{
+					commandList.End();
+					device.SubmitCommands(commandList, fence);
+				}
+			}
 
 			begin = false;
+
+			return commandList;
+		}
+
+		public CommandList GetCommandList()
+		{
+			if (begin)
+			{
+				//ERROR
+				Console.WriteLine("ERROR: Cannot call GetCommandList while begin is true. Call .End first.");
+
+				return null;
+			}
+			return commandList;
 		}
 
 		private void ReallyDraw()
@@ -246,6 +265,8 @@ namespace BRVBase
 					currentIndexBufferSize = indices.Buffer.Length;
 				}
 
+				vertexBuffer?.Dispose();
+				indexBuffer?.Dispose();
 				vertexBuffer = factory.CreateBuffer(new BufferDescription((uint)(DefaultVertexDefinitions.VertexPositionTextureColor.SIZE * currentVertexBufferSize), BufferUsage.VertexBuffer));
 				indexBuffer = factory.CreateBuffer(new BufferDescription((uint)(sizeof(uint) * currentIndexBufferSize), BufferUsage.IndexBuffer));
 			}
@@ -256,7 +277,7 @@ namespace BRVBase
 			commandList.SetVertexBuffer(0, vertexBuffer);
 			commandList.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
 
-			commandList.DrawIndexed((uint)indices.Length, (uint)(indices.Length / 3), 0, 0, 0);
+			commandList.DrawIndexed((uint)indices.Length);
 
 			vertices.Clear();
 			indices.Clear();

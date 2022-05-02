@@ -35,11 +35,11 @@ namespace BRVBase
 
 	public class AssetLoaderShader : AssetLoader<ShaderWrapper>
 	{
-		public AssetLoaderShader() : base(Constants.ASSETS_BASE_DIR + "Shaders/", ".glsl")
+		public AssetLoaderShader() : base(new string[] { "./Assets/Shaders/", "./BRVBase/Assets/Shaders/" }, ".glsl")
 		{
 		}
 
-		protected override ShaderWrapper Load(string name)
+		protected override ShaderWrapper Load(string baseDir, string name)
 		{
 			if (File.Exists(baseDir + name + extension))
 			{

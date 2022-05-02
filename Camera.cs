@@ -4,27 +4,54 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using Veldrid;
 
 namespace BRVBase
 {
-	public class Camera
+	public abstract class Camera
 	{
-		public Vector2 position;
-		
-		public Matrix4x4 GetMatrix()
+		public Vector3 Position;
+		public float Yaw;
+		public float Pitch;
+		public float Roll;
+		public float Width;
+		public float Height;
+		public readonly float Near;
+		public readonly float Far;
+
+		protected Point viewport;
+
+		public bool DebugControlled;
+
+		public Camera(float width, float height, float near, float far, Point viewport)
 		{
-			return Matrix4x4.CreateTranslation(-new Vector3(position, 0));
+			Width = width;
+			Height = height;
+			Near = near;
+			Far = far;
+
+			this.viewport = viewport;
 		}
 
-		public Matrix4x4 GetScaledMatrix()
+		public virtual void UpdateViewport(int width, int height)
+        {
+			this.viewport.X = width;
+			this.viewport.Y = height;
+        }
+
+		public virtual void Update(DeltaTime delta, bool canControlSelf)
 		{
-			return Matrix4x4.CreateScale((float)Constants.WINDOW_WIDTH / (float)Constants.INTERNAL_WIDTH,
-				(float)Constants.WINDOW_HEIGHT / (float)Constants.INTERNAL_HEIGHT, 1) * GetMatrix();
+
 		}
 
-		public Matrix4x4 GetProjection()
-		{
-			return Matrix4x4.CreateOrthographicOffCenter(0, Constants.INTERNAL_WIDTH, Constants.INTERNAL_HEIGHT, 0, 0, 100);
-		}
+		public abstract Matrix4x4 GetView();
+
+		public abstract Matrix4x4 GetProjection();
+
+		public abstract Vector3 GetLookDir();
+
+		public abstract void SetLookDir(Vector3 dir);
+
+		public abstract Vector3 GetMouseProjection();
 	}
 }

@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace BRVBase
 {
+	//TODO get rid of
+	//Most of this content has no place in a base framework.
 	public class Constants
 	{
 		public const int WINDOW_WIDTH = 960;

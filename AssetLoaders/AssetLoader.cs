@@ -38,6 +38,10 @@ namespace BRVBase
 			if (!loaded)
 			{
 				asset = loader.GetRaw(Name);
+
+				if (asset == null)
+					Console.WriteLine("ERROR: while loading asset {0}.", Name);
+
 				loaded = true;
 			}
 
@@ -55,38 +59,47 @@ namespace BRVBase
 		private Dictionary<string, AssetHandle<TAsset>> handles = new Dictionary<string, AssetHandle<TAsset>>();
 		private Dictionary<string, TAsset> assets = new Dictionary<string, TAsset>();
 
-		protected readonly string baseDir;
+		protected readonly string[] baseDirs;
+
 		protected readonly string extension;
 
-		private readonly FileSystemWatcher watcher;
+		private readonly FileSystemWatcher[] watchers;
 
 		public event Action<string> OnAssetUnloaded;
 		public event Action<string> OnAssetChanged;
 
-		public AssetLoader(string baseDir, string extension)
+		public AssetLoader(string[] baseDirs, string extension)
 		{
-			if (!Directory.Exists(baseDir))
-			{
-				return;
-			}
-			this.baseDir = baseDir;
 			this.extension = extension;
+			this.baseDirs = baseDirs;
+			watchers = new FileSystemWatcher[baseDirs.Length];
+			for (int i = 0; i < baseDirs.Length; i++)
+			{
+				string baseDir = baseDirs[i];
 
-			string path = "./../../../" + baseDir.Replace("./", "");
-			path = Path.GetFullPath(path);
-			watcher = new FileSystemWatcher(path);
-			watcher.EnableRaisingEvents = true;
-			watcher.NotifyFilter = NotifyFilters.Attributes |
-				NotifyFilters.CreationTime |
-				NotifyFilters.FileName |
-				NotifyFilters.LastAccess |
-				NotifyFilters.LastWrite |
-				NotifyFilters.Size |
-				NotifyFilters.Security;
+				string path = "./../../../" + baseDir;
 
-			watcher.Filter = "";
+				if (Directory.Exists(path))
+				{
+					path = Path.GetFullPath(path);
+					watchers[i] = new FileSystemWatcher(path);
+					watchers[i].EnableRaisingEvents = true;
+					watchers[i].NotifyFilter = NotifyFilters.Attributes |
+						NotifyFilters.CreationTime |
+						NotifyFilters.FileName |
+						NotifyFilters.LastAccess |
+						NotifyFilters.LastWrite |
+						NotifyFilters.Size |
+						NotifyFilters.Security;
 
-			watcher.Changed += OnChanged;
+					watchers[i].Filter = "*";
+
+					watchers[i].Changed += OnChanged;
+
+					Console.WriteLine("Set up asset hot-reloading in path {0} for asset loader {1}.", path, this.GetType().Name);
+				}
+				else Console.WriteLine("path {0} does not yet exist for asset loader {1}.", baseDirs[i], this.GetType().Name);
+			}
 		}
 
 		public AssetHandle<TAsset> GetHandle(string name)
@@ -100,7 +113,20 @@ namespace BRVBase
 		public TAsset GetRaw(string name)
 		{
 			if (!assets.ContainsKey(name))
-				assets.Add(name, Load(name));
+			{
+				TAsset asset = default;
+				for (int i = 0; i < baseDirs.Length; i++)
+				{
+					asset = Load(baseDirs[i], name);
+
+					if (asset != null && asset.GetName() != null)
+						break;
+				}
+
+				assets.Add(name, asset);
+
+				PostLoad(asset);
+			}
 
 			return assets[name];
 		}
@@ -150,10 +176,18 @@ namespace BRVBase
 				//Have to wait for both to copy them
 				//Or maybe only the destination? TODO: Look into this
 				Util.WaitForFile(e.FullPath);
-				Util.WaitForFile(baseDir + e.Name);
 
-				File.Copy(e.FullPath, baseDir + e.Name, true);
-				MarkAssetChanged(realName);
+				for (int i = 0; i < baseDirs.Length; i++)
+				{
+					string baseDir = baseDirs[i];
+
+					if (Util.WaitForFile(baseDir + e.Name))
+					{
+
+						File.Copy(e.FullPath, baseDir + e.Name, true);
+						MarkAssetChanged(realName);
+					}
+				}
 			}
 
 			Runner.FrameSemaphore.Release();
@@ -164,6 +198,8 @@ namespace BRVBase
 
 		}
 
-		protected abstract TAsset Load(string name);
+		protected abstract TAsset Load(string baseDir, string name);
+
+		protected virtual void PostLoad(TAsset asset) { }
 	}
 }

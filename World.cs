@@ -10,14 +10,22 @@ namespace BRVBase
 	public abstract class World
 	{
 		private AssetHandle<TiledMap> map;
+		public Camera Camera;
+		protected readonly GraphicsDevice device;
 
 		public World(AssetHandle<TiledMap> map, GraphicsDevice device)
 		{
 			this.map = map;
+			this.device = device;
 		}
 
-		public void Update(DeltaTime dt)
+		public virtual void Update(DeltaTime delta)
 		{
+		}
+
+		public virtual void PausedUpdate(DeltaTime delta)
+		{
+
 		}
 
 		public AssetHandle<TiledMap> GetMap()
@@ -25,7 +33,7 @@ namespace BRVBase
 			return map;
 		}
 
-		public void Draw(DeltaTime dt)
+		public virtual void Draw(DeltaTime delta)
 		{
 
 		}

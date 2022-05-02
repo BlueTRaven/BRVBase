@@ -66,7 +66,7 @@ namespace BRVBase
 
 		private JsonSerializerOptions options;
 
-		public AssetLoaderFont(GraphicsDevice device, ResourceFactory factory) : base(Constants.ASSETS_BASE_DIR + "Fonts/", ".json")
+		public AssetLoaderFont(GraphicsDevice device, ResourceFactory factory) : base(new string[] { "../Asssets/Fonts/", "./Assets/Fonts/" }, ".json")
 		{
 			this.device = device;
 			this.factory = factory;
@@ -87,7 +87,7 @@ namespace BRVBase
 			public bool premult;
 		}
 
-		protected override Font Load(string name)
+		protected override Font Load(string baseDir, string name)
 		{
 			if (File.Exists(baseDir + name + extension))
 			{

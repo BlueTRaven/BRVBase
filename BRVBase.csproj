@@ -25,6 +25,7 @@
   <ItemGroup>
     <PackageReference Include="Veldrid" Version="4.8.0" />
     <PackageReference Include="Veldrid.ImageSharp" Version="4.8.0" />
+    <PackageReference Include="Veldrid.ImGui" Version="5.72.0" />
     <PackageReference Include="Veldrid.SDL2" Version="4.8.0" />
     <PackageReference Include="Veldrid.SPIRV" Version="1.0.14" />
     <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />
@@ -33,6 +34,12 @@
   <ItemGroup>
     <ProjectReference Include="FontStashSharp\src\FontStashSharp\FontStashSharp.csproj" />
     <ProjectReference Include="TiledSharp\TiledSharp\TiledSharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Shaders\ShaderLitGeneric.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -54,10 +61,19 @@
     <None Update="Assets\Fonts\munro_small.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\Shaders\frag_cubedepth.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\frag_depth.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Shaders\frag_error.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Shaders\frag_generic.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\frag_litgeneric.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Shaders\frag_solidcolor.glsl">
@@ -66,10 +82,25 @@
     <None Update="Assets\Shaders\frag_text.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\Shaders\frag_visualizedepth.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\vertex_cubedepth.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\vertex_depth.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Assets\Shaders\vertex_error.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Assets\Shaders\vertex_generic.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\vertex_generic_2d.glsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Shaders\vertex_generic_3d.glsl">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

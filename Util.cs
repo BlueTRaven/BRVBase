@@ -16,6 +16,39 @@ namespace BRVBase
 {
 	public static class Util
 	{
+		public static Matrix4x4 CreatePerspective(float fov, float aspectRatio, float near, float far)
+		{
+			if (fov <= 0.0f || fov >= MathF.PI)
+				throw new ArgumentOutOfRangeException(nameof(fov));
+
+			if (near <= 0.0f)
+				throw new ArgumentOutOfRangeException(nameof(near));
+
+			if (far <= 0.0f)
+				throw new ArgumentOutOfRangeException(nameof(far));
+
+			float yScale = 1.0f / MathF.Tan(fov * 0.5f);
+			float xScale = yScale / aspectRatio;
+
+			Matrix4x4 result;
+
+			result.M11 = xScale;
+			result.M12 = result.M13 = result.M14 = 0.0f;
+
+			result.M22 = yScale;
+			result.M21 = result.M23 = result.M24 = 0.0f;
+
+			result.M31 = result.M32 = 0.0f;
+			var negFarRange = float.IsPositiveInfinity(far) ? -1.0f : far / (near - far);
+			result.M33 = negFarRange;
+			result.M34 = -1.0f;
+
+			result.M41 = result.M42 = result.M44 = 0.0f;
+			result.M43 = near * negFarRange;
+
+			return result;
+		}
+
 		public static bool CheckLOS(World world, Vector2 startPosition, Vector2 endPosition)
 		{
 			Veldrid.Point start = new Veldrid.Point((int)startPosition.X / 16, (int)startPosition.Y / 16);// world.GetMap().GetLayer("collision").GetTile();
@@ -82,6 +115,37 @@ namespace BRVBase
 			return result;
 		}
 
+		public static TAttr GetAttribute<TAttr>(object obj) where TAttr : Attribute
+		{
+			var attr = obj.GetType().GetCustomAttribute<TAttr>();
+
+			return attr;
+		}
+
+		/*public static T GetAttribute<T>() where T : Attribute
+		{
+			foreach (Assembly assemb in AppDomain.CurrentDomain.GetAssemblies())
+			{
+				var a = Attribute.GetCustomAttribute(assemb, typeof(T));
+				if (a != null)
+					return (T)a;
+			}
+
+			return null;
+		}
+
+		public static Attribute GetAttribute(Type type)
+		{
+			foreach (Assembly assemb in AppDomain.CurrentDomain.GetAssemblies())
+			{
+				var a = Attribute.GetCustomAttribute(assemb, type);
+				if (a != null)
+					return a;
+			}
+
+			return null;
+		}*/
+
 		public static Type GetType(string name)
 		{
 			foreach (Assembly assemb in AppDomain.CurrentDomain.GetAssemblies())
@@ -96,8 +160,12 @@ namespace BRVBase
 			return null;
 		}
 
-		public static void WaitForFile(string path)
+		public static bool WaitForFile(string path)
 		{
+			//early check return. Don't wait on files that don't exist.
+			if (!File.Exists(path))
+				return false;
+
 			SpinWait spinWait = new SpinWait();
 
 			while (true)
@@ -117,6 +185,8 @@ namespace BRVBase
 					spinWait.SpinOnce();
 				}
 			}
+
+			return true;
 		}
 
 		public static void DisposeShaders(Shader[] shaders)

@@ -26,6 +26,12 @@ namespace BRVBase
 			return this;
 		}
 
+		public DeviceBufferBuilder Int()
+		{
+			bytes += 16;
+			return this;
+		}
+
 		public DeviceBufferBuilder Vector2()
 		{
 			//pad to 16 bytes (vec4)
@@ -53,9 +59,57 @@ namespace BRVBase
 			return this;
 		}
 
+		public DeviceBufferBuilder FloatArr(int elements)
+		{
+			bytes += (uint)(16 * elements);
+
+			return this;
+		}
+
+		public DeviceBufferBuilder IntArr(int elements) 
+		{
+			bytes += (uint)(16 * elements);
+
+			return this;
+		}
+
+		public DeviceBufferBuilder Vector2Arr(int elements)
+		{
+			bytes += (uint)(16 * elements);
+
+			return this;
+		}
+
+		public DeviceBufferBuilder Vector3Arr(int elements)
+		{
+			bytes += (uint)(16 * elements);
+
+			return this;
+		}
+
+		public DeviceBufferBuilder Vector4Arr(int elements)
+		{
+			bytes += (uint)(16 * elements);
+
+			return this;
+		}
+
+		public DeviceBufferBuilder Mat4x4Arr(int elements)
+		{
+			bytes += (uint)(64 * elements);
+
+			return this;
+		}
+
 		public DeviceBuffer Build()
 		{
-			return factory.CreateBuffer(new BufferDescription(bytes, BufferUsage.UniformBuffer));
+			if (bytes > 0)
+				return factory.CreateBuffer(new BufferDescription(bytes, BufferUsage.UniformBuffer));
+            else
+            {
+				Console.WriteLine("Cannot build a buffer with 0 bytes. Did you forget to add values?");
+				return null;
+            }
 		}
-	}
+    }
 }

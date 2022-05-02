@@ -33,5 +33,7 @@ namespace BRVBase
 		public virtual void Update(DeltaTime delta) { }
 
 		public virtual void Draw(DeltaTime delta) { }
+
+		public virtual void WindowResized(int width, int height) { }
 	}
 }

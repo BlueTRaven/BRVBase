@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
@@ -69,6 +70,29 @@ namespace BRVBase
 			public static VertexLayoutDescription GetLayout()
 			{
 				return new VertexDefinitionBuilder(true).Float2("Position").Float2("TexCoord").Float4("Color").Build();
+			}
+		}
+
+		public readonly struct VertexPositionNormalTextureColor
+		{
+			public readonly Vector3 position;
+			public readonly Vector3 normal;
+			public readonly Vector2 textureCoord;
+			public readonly RgbaFloat color;
+
+			public VertexPositionNormalTextureColor(Vector3 position, Vector3 normal, Vector2 textureCoord, RgbaFloat color)
+			{
+				this.position = position;
+				this.normal = normal;
+				this.textureCoord = textureCoord;
+				this.color = color;
+			}
+
+			public const uint SIZE = 12 + 12 + 8 + 16;
+
+			public static VertexLayoutDescription GetLayout()
+			{
+				return new VertexDefinitionBuilder(true).Float3("Position").Float3("Normal").Float2("TexCoord").Float4("Color").Build();
 			}
 		}
 	}

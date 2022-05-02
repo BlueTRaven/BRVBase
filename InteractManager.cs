@@ -18,6 +18,10 @@ namespace BRVBase
 		//Specifies the time after which interaction is next valid.
 		private float interactionTime;
 
+		public InteractManager()
+		{
+		}
+
 		public void Add(int priority, InteractHover interactHover, InteractSuccess interactSuccess)
 		{
 			if (priority < previousPriority)
@@ -32,7 +36,7 @@ namespace BRVBase
 		{
 			interactHover?.Invoke();
 
-			if (delta.Now > interactionTime && Main.Input.IsKeyJustPressed(Veldrid.Key.F))
+			if (delta.Now > interactionTime && Input.IsKeyJustPressed(Veldrid.Key.F))
 			{
 				interactSuccess?.Invoke();
 				interactionTime = (float)delta.Now + 0.5f;

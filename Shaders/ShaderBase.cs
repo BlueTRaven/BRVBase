@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
 
 namespace BRVBase
 {
-	public abstract class ShaderBase
+	public abstract class ShaderBase : IDisposable
 	{
 		public readonly struct TextureAndSamplerSlot
 		{
@@ -24,7 +25,8 @@ namespace BRVBase
 
 		private Shader[] shaders;
 
-		private DeviceBuffer transformBuffer;
+		private ShaderUniformManager defaultUniforms;
+		//private DeviceBuffer transformBuffer;
 
 		private TextureAndSamplerSlot[] textureSlots;
 		//Note that this does not represent what textures are actually bound on the gpu side.
@@ -34,20 +36,17 @@ namespace BRVBase
 		private ResourceLayout[] uniformLayout;
 		private bool defaultUniformsDirty;
 		private bool definedUniformsDirty;
-
-		//Does this shader store the uniform resolution?
-		public readonly bool StoresResolution;
-
-		protected readonly ResourceFactory factory;
+        protected readonly ResourceFactory factory;
 		protected readonly GraphicsDevice device;
 
-		protected VertexLayoutDescription vertexDefinition;
+		protected readonly bool ModelMatrix;
 
-		public ShaderBase(GraphicsDevice device, ResourceFactory factory, int numTextures, bool storesResolution = false)
+        private bool disposedValue;
+
+		public ShaderBase(GraphicsDevice device, ResourceFactory factory, int numTextures)
 		{
 			this.device = device;
 			this.factory = factory;
-			this.StoresResolution = storesResolution;
 
 			shaders = LoadShaders();
 
@@ -60,7 +59,15 @@ namespace BRVBase
 
 			boundTextures = new TextureAndSampler[numTextures];
 
-			vertexDefinition = GetVertexLayout();
+			defaultUniforms = new ShaderUniformManager(factory, device, "Default", "Default", new Dictionary<string, ShaderUniformManager.UniformValidator>()
+			{
+				{ "ViewProj", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4), ShaderStages.Vertex) },
+				{ "Model", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4), ShaderStages.Vertex) },
+				{ "Tint", new ShaderUniformManager.UniformValidator(typeof(RgbaFloat), ShaderStages.Vertex) }
+			});
+
+			defaultUniforms.Set("ViewProj", Matrix4x4.Identity, ShaderStages.Vertex);
+			defaultUniforms.Set("Model", Matrix4x4.Identity, ShaderStages.Vertex);
 		}
 
 		public ShaderBase(GraphicsDevice device, ResourceFactory factory, TextureAndSamplerSlot[] slots)
@@ -74,7 +81,15 @@ namespace BRVBase
 
 			boundTextures = new TextureAndSampler[slots.Length];
 
-			vertexDefinition = GetVertexLayout();
+			defaultUniforms = new ShaderUniformManager(factory, device, "Default", "Default", new Dictionary<string, ShaderUniformManager.UniformValidator>()
+			{
+				{ "ViewProj", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4), ShaderStages.Vertex) },
+				{ "Model", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4), ShaderStages.Vertex) },
+				{ "Tint", new ShaderUniformManager.UniformValidator(typeof(RgbaFloat), ShaderStages.Vertex) }
+			});
+
+			defaultUniforms.Set("ViewProj", Matrix4x4.Identity, ShaderStages.Vertex);
+			defaultUniforms.Set("Model", Matrix4x4.Identity, ShaderStages.Vertex);
 		}
 
 		public abstract Shader[] LoadShaders();
@@ -88,32 +103,46 @@ namespace BRVBase
 
 		public void SetViewProj(CommandList commandList, Matrix4x4 viewProj)
 		{
-			if (transformBuffer == null)
+			defaultUniforms.Set("ViewProj", viewProj, ShaderStages.Vertex, commandList);
+			/*if (transformBuffer == null)
 				CreateDefaultBuffer();
 			commandList.UpdateBuffer(transformBuffer, 0, viewProj);
 
-			defaultUniformsDirty = true;
+			defaultUniformsDirty = true;*/
 		}
 
-		public void SetResolution(CommandList commandList, Vector2 resolution)
+		public void SetModel(CommandList commandList, Matrix4x4 model)
 		{
-			if (!StoresResolution)
-				throw new Exception("Cannot set resolution as the shader does not support it!");
-
-			if (transformBuffer == null)
+			defaultUniforms.Set("Model", model, ShaderStages.Vertex, commandList);
+			/*if (transformBuffer == null)
 				CreateDefaultBuffer();
+			commandList.UpdateBuffer(transformBuffer, (uint)Marshal.SizeOf(typeof(Matrix4x4)), model);
 
-			commandList.UpdateBuffer(transformBuffer, 64, resolution);
+			defaultUniformsDirty = true;*/
 		}
 
-		private void CreateDefaultBuffer()
+		public void SetTint(CommandList commandList, RgbaFloat color)
 		{
-			DeviceBufferBuilder builder = new DeviceBufferBuilder(factory).Mat4x4();
-			if (StoresResolution)
-				builder.Vector2();
+			defaultUniforms.Set("Tint", color, ShaderStages.Vertex);
+			/*if (transformBuffer == null)
+				CreateDefaultBuffer();
+			commandList.UpdateBuffer(transformBuffer, (uint)Marshal.SizeOf(typeof(Matrix4x4)) * 2, color.ToVector4());
 
-			transformBuffer = builder.Build();
+			defaultUniformsDirty = true;*/
 		}
+
+		/*private void CreateDefaultBuffer()
+		{
+			DeviceBufferBuilder builder = new DeviceBufferBuilder(factory).Mat4x4().Mat4x4().Vector4();
+			transformBuffer = builder.Build();
+
+			uint offset = 0;
+			device.UpdateBuffer(transformBuffer, offset, Matrix4x4.Identity);
+			offset += (uint)Marshal.SizeOf(typeof(Matrix4x4));
+			device.UpdateBuffer(transformBuffer, offset, Matrix4x4.Identity);
+			offset += (uint)Marshal.SizeOf(typeof(Matrix4x4));
+			device.UpdateBuffer(transformBuffer, offset, Vector4.One);
+		}*/
 
 		public virtual void SetTexture(int index, TextureAndSampler texture)
 		{
@@ -125,7 +154,7 @@ namespace BRVBase
 			defaultUniformsDirty = true;
 		}
 
-		protected virtual VertexLayoutDescription GetVertexLayout()
+		public virtual VertexLayoutDescription GetVertexLayout()
 		{
 			return DefaultVertexDefinitions.VertexPositionTextureColor.GetLayout();
 		}
@@ -138,19 +167,34 @@ namespace BRVBase
 			return shaders;
 		}
 
-		public ResourceLayout[] GetUniformLayout()
+		public ResourceLayout[] GetUniformLayout(List<ShaderUniformManager> uniforms)
 		{
-			if (uniformLayout == null)
+			ResourceLayout[] layout = new ResourceLayout[uniforms.Count];
+			for (uint i = 0; i < uniforms.Count; i++)
+            {
+				layout[(int)i] = uniforms[(int)i].GetLayout();
+            }
+
+			return layout;
+
+			/*if (uniformLayout == null)
 			{
 				uniformLayout = new ResourceLayout[2];
 				uniformLayout[0] = CreateDefaultLayout();
 				uniformLayout[1] = CreateUserDefinedResourceLayout();
+
+				if (uniformLayout[1] == null)
+				{
+					var old = uniformLayout[0];
+					uniformLayout = new ResourceLayout[1];
+					uniformLayout[0] = old;
+				}
 			}
 
-			return uniformLayout;
+			return uniformLayout;*/
 		}
 
-		public ResourceLayout GetDefaultLayout()
+		/*public ResourceLayout GetDefaultLayout()
 		{
 			return GetUniformLayout()[0];
 		}
@@ -158,7 +202,7 @@ namespace BRVBase
 		public ResourceLayout GetUserDefinedLayout()
 		{
 			return GetUniformLayout()[1];
-		}
+		}*/
 
 		private ResourceLayout CreateDefaultLayout()
 		{
@@ -175,18 +219,42 @@ namespace BRVBase
 
 		protected abstract ResourceLayout CreateUserDefinedResourceLayout();
 
-		public void Bind(CommandList commandList)
+		[Obsolete("Bind uniforms manually to avoid list allocation")]
+		public void Bind(CommandList commandList, List<ShaderUniformManager> uniforms)
 		{
-			var sets = GetResourceSet();
+			for (uint i = 0; i < uniforms.Count; i++)
+            {
+				uniforms[(int)i].Bind(commandList, i);
+            }
+
+			/*var sets = GetResourceSet();
 
 			commandList.SetGraphicsResourceSet(0, sets[0]);
 			if (sets[1] != null)
-				commandList.SetGraphicsResourceSet(1, sets[1]);
+				commandList.SetGraphicsResourceSet(1, sets[1]);*/
 		}
+
+		public ResourceLayout[] GetLayout(Span<ShaderUniformManager> uniforms)
+        {
+			ResourceLayout[] layout = new ResourceLayout[uniforms.Length];
+
+			for (int i = 0; i < uniforms.Length; i++)
+            {
+				layout[i] = uniforms[i].GetLayout();
+            }
+
+			return layout;
+        }
 
 		private ResourceSet[] GetResourceSet()
 		{
 			if (uniformSet == null)
+				uniformSet = new ResourceSet[2];
+
+			uniformSet[0] = defaultUniforms.GetSet();
+			uniformSet[1] = CreateUserDefinedResourceSet();
+
+			/*if (uniformSet == null)
 			{
 				uniformSet = new ResourceSet[2];
 				defaultUniformsDirty = true;
@@ -213,20 +281,25 @@ namespace BRVBase
 				}
 
 				if (!failed)
+				{
+					uniformSet[0]?.Dispose();
 					uniformSet[0] = factory.CreateResourceSet(new ResourceSetDescription(GetUniformLayout()[0], resources.ToArray()));
+				}
 
 				defaultUniformsDirty = false;
 			}
 
 			if (definedUniformsDirty)
 			{
+				uniformSet[1]?.Dispose();
 				uniformSet[1] = CreateUserDefinedResourceSet();
 				definedUniformsDirty = false;
-			}
+			}*/
 
 			return uniformSet;
 		}
 
+		//TODO: rename/remove, no longer creates since we handle that in ShaderUniformManager.
 		protected abstract ResourceSet CreateUserDefinedResourceSet();
 
 		protected void MarkDefaultUniformsDirty(bool immediateCache = false)
@@ -239,6 +312,8 @@ namespace BRVBase
 
 		protected void MarkUserDefinedUniformsDirty(bool immediateCache = false)
 		{
+			definedUniformsDirty = true;
+
 			if (immediateCache)
 				GetResourceSet();
 		}
@@ -247,5 +322,34 @@ namespace BRVBase
 		{
 			return null;
 		}
-	}
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+					defaultUniforms.Dispose();
+					for (int i = 0; i < shaders.Length; i++)
+						shaders[i].Dispose();
+                }
+
+				//transformBuffer.Dispose();
+
+				disposedValue = true;
+            }
+        }
+
+        // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~ShaderBase()
+        {
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
 }

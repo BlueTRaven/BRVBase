@@ -40,17 +40,31 @@ namespace BRVBase
 			font.DrawText(renderer, str, position, col);
 		}
 
-		public void End()
+		public CommandList End(bool submitImmediately = true)
 		{
 			if (!begin)
 			{
 				//ERROR
-				return;
+				return null;
 			}
 
-			spriteBatch.End();
+			CommandList list = spriteBatch.End(submitImmediately);
 
 			begin = false;
+
+			return list;
+		}
+
+		public CommandList GetCommandList()
+		{
+			if (begin)
+			{
+				//ERROR
+				Console.WriteLine("ERROR: Cannot call GetCommandList while begin is true. Call .End first.");
+
+				return null;
+			}
+			return spriteBatch.GetCommandList();
 		}
 	}
 }

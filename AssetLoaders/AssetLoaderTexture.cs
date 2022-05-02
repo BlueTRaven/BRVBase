@@ -15,13 +15,13 @@ namespace BRVBase
 		private readonly GraphicsDevice device;
 		private readonly ResourceFactory factory;
 
-		public AssetLoaderTexture(GraphicsDevice device, ResourceFactory factory) : base(Constants.ASSETS_BASE_DIR + "Textures/", ".png")
+		public AssetLoaderTexture(GraphicsDevice device, ResourceFactory factory) : base(new string[] { "./Assets/Textures/" }, ".png")
 		{
 			this.device = device;
 			this.factory = factory;
 		}
 
-		protected override TextureAndSampler Load(string name)
+		protected override TextureAndSampler Load(string baseDir, string name)
 		{
 			if (File.Exists(baseDir + name + extension))
 			{

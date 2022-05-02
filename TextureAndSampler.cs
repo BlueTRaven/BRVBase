@@ -35,7 +35,9 @@ namespace BRVBase
 
 		public string GetName()
 		{
-			return texture.Name;
+			if (texture != null)
+				return texture.Name;
+			else return null;
 		}
 
 		public static bool operator ==(TextureAndSampler first, TextureAndSampler second)

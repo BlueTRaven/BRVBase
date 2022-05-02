@@ -73,7 +73,7 @@ namespace BRVBase
 	{
 		private JsonSerializerOptions options;
 
-		public AssetLoaderDialogue() : base(Constants.ASSETS_BASE_DIR + "Dialogues/", ".json")
+		public AssetLoaderDialogue() : base(new string[] { "../Asssets/Dialogues/", "./Assets/Dialogues/" }, ".json")
 		{
 			options = new JsonSerializerOptions()
 			{
@@ -81,7 +81,7 @@ namespace BRVBase
 			};
 		}
 
-		protected override DialogueAsset Load(string name)
+		protected override DialogueAsset Load(string baseDir, string name)
 		{
 			if (File.Exists(baseDir + name + extension))
 			{

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BRVBase.Services;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,8 +8,9 @@ using System.Threading.Tasks;
 using Veldrid;
 using Veldrid.SPIRV;
 
-namespace BRVBase
+namespace BRVBase.Shaders
 {
+	[Shader("vertex_generic_2d", "frag_text")]
 	public class ShaderText : ShaderBase
 	{
 		private Shader vertexShader;
@@ -20,8 +22,8 @@ namespace BRVBase
 
 		public override Shader[] LoadShaders()
 		{
-			AssetHandle<ShaderWrapper> vertex = Main.AssetManager.ShaderLoader.GetHandle("vertex_generic");
-			AssetHandle<ShaderWrapper> fragment = Main.AssetManager.ShaderLoader.GetHandle("frag_text");
+			(AssetHandle<ShaderWrapper> vertex,
+			AssetHandle<ShaderWrapper> fragment) = Util.GetAttribute<Shaders.ShaderAttribute>(this).GetShaders();
 
 			ShaderDescription vertexDesc = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(vertex.Get().Content), "main");
 			ShaderDescription fragDesc = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(fragment.Get().Content), "main");
