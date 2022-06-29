@@ -12,6 +12,16 @@ namespace BRVBase
 {
 	public static class Gizmos
 	{
+		public struct GizmosResources
+        {
+			public ShaderResourceManager ManagerWithViewProj;
+			public ShaderResourceManager ManagerWithModel;
+			public ShaderResourceManager ManagerWithTexture;
+			public string TextureName;
+			public ShaderResourceManager ManagerWithTint;
+			public IList<ShaderResourceManager> AllManagers;
+        }
+
 		private struct Render
 		{
 			public Model Model;
@@ -26,6 +36,8 @@ namespace BRVBase
 			}
 		}
 
+		private static Dictionary<GizmosResources, ModelResources> cachedModelResources = new Dictionary<GizmosResources, ModelResources>();
+
 		private static Model cylinder;
 		private static Model cube;
 		private static TextureAndSampler texture;
@@ -34,6 +46,7 @@ namespace BRVBase
 		private static CommandList commandList;
 		private static Camera camera;
 		private static PipelineProgram program;
+		private static GizmosResources resources;
 		private static bool started;
 
 		private static List<Render> renders = new List<Render>();
@@ -73,12 +86,26 @@ namespace BRVBase
 			texture = ServiceManager.Instance.GetService<AssetManager>().TextureLoader.GetHandle("whitepixel").Get();
 		}
 
-		public static void Start(Camera camera, PipelineProgram program)
+		public static void Start(Camera camera, PipelineProgram program, GizmosResources resources)
 		{
 			Gizmos.camera = camera;
 			Gizmos.program = program;
+            Gizmos.resources = resources;
 
-			renders.Clear();
+			if (!cachedModelResources.ContainsKey(resources))
+			{
+				cachedModelResources.Add(resources, new ModelResources()
+				{
+					Program = program,
+					AllManagers = resources.AllManagers,
+					ManagerWithModel = resources.ManagerWithModel,
+					ManagerWithTexture = resources.ManagerWithTexture,
+					ManagerWithViewProj = resources.ManagerWithViewProj,
+					TextureName = resources.TextureName
+				});
+			}
+
+            renders.Clear();
 
 			started = true;
 		}
@@ -380,13 +407,16 @@ namespace BRVBase
 			{
 				if (render.Color != oldColor)
 				{
-					program.GetShader().SetTint(commandList, render.Color);
+					resources.ManagerWithTint.Set("Tint", render.Color, ShaderStages.Vertex, commandList);
+					//program.GetShader().SetTint(commandList, render.Color);
 					oldColor = render.Color;
 				}
-				Model.Draw(render.Model, commandList, camera, program, texture, render.Matrix);
+				Model.Draw(render.Model, commandList, camera, render.Matrix, texture, cachedModelResources[resources]);
+				//Model.Draw(render.Model, commandList, camera, program, texture, render.Matrix);
 			}
 
-			program.GetShader().SetTint(commandList, RgbaFloat.White);
+			resources.ManagerWithTint.Set("Tint", RgbaFloat.White, ShaderStages.Vertex, commandList);
+			//program.GetShader().SetTint(commandList, RgbaFloat.White);
 
 			commandList.End();
 			device.SubmitCommands(commandList);

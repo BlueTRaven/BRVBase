@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
@@ -35,14 +36,25 @@ namespace BRVBase.Shaders
 			return new Shader[] { vertexShader, fragmentShader };
 		}
 
-		protected override ResourceLayout CreateUserDefinedResourceLayout()
+		protected override ShaderResourceManager[] CreateResourceManagers(ResourceLayout[] layouts)
 		{
-			return null;
+			ShaderResourceManager[] managers = new ShaderResourceManager[1];
+
+			managers[0] = new ShaderResourceManager(layouts[0], factory, device, "Default", null);
+			managers[0].Assign<Matrix4x4>("ViewProj", ShaderStages.Vertex);
+			managers[0].AssignTextureAndSampler("Texture1", ShaderStages.Fragment);
+
+			return managers;
 		}
 
-		protected override ResourceSet CreateUserDefinedResourceSet()
+		protected override ResourceLayout[] CreateResourceLayouts()
 		{
-			return null;
+			return new ResourceLayout[1]
+			{
+				new ResourceLayoutBuilder(factory).Uniform("Default", ShaderStages.Vertex)
+					.Texture("Texture1", ShaderStages.Fragment)
+					.Sampler("Texture1Sampler", ShaderStages.Fragment).Build()
+			};
 		}
 
 		private static string[] shaderNames = { "vertex_generic_2d", "frag_solidcolor" };

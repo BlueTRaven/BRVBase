@@ -12,15 +12,8 @@ namespace BRVBase.Shaders
 	[Shader("vertex_generic_3d", "frag_generic")]
 	public class ShaderGeneric3D : ShaderBase
 	{
-		private ShaderUniformManager vertexUniforms;
-		private ShaderUniformManager fragmentUniforms;
-
 		public ShaderGeneric3D(GraphicsDevice device, ResourceFactory factory) : base(device, factory, 1)
 		{
-			vertexUniforms = new ShaderUniformManager(factory, device, "VertexLightSet", null, new Dictionary<string, ShaderUniformManager.UniformValidator>()
-			{
-				{ "LightViewProj", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4), ShaderStages.Vertex) },
-			});
 		}
 
 		public override Shader[] LoadShaders()
@@ -45,14 +38,28 @@ namespace BRVBase.Shaders
 			return DefaultVertexDefinitions.VertexPositionNormalTextureColor.GetLayout();
 		}
 
-		protected override ResourceLayout CreateUserDefinedResourceLayout()
+		protected override ShaderResourceManager[] CreateResourceManagers(ResourceLayout[] layouts)
 		{
-			return null;
+			ShaderResourceManager[] managers = new ShaderResourceManager[1];
+
+			managers[0] = new ShaderResourceManager(layouts[0], factory, device, "Default", null);
+			managers[0].Assign<Matrix4x4>("ViewProj", ShaderStages.Vertex);
+			managers[0].Assign<Matrix4x4>("Model", ShaderStages.Vertex);
+			managers[0].Assign<RgbaFloat>("Tint", ShaderStages.Vertex);
+			managers[0].AssignTextureAndSampler("Texture1", ShaderStages.Fragment);
+			managers[0].Set<RgbaFloat>("Tint", RgbaFloat.White, ShaderStages.Vertex);
+
+			return managers;
 		}
 
-		protected override ResourceSet CreateUserDefinedResourceSet()
+		protected override ResourceLayout[] CreateResourceLayouts()
 		{
-			return null;
+			return new ResourceLayout[1] 
+			{ 
+				new ResourceLayoutBuilder(factory).Uniform("Default", ShaderStages.Vertex)
+					.Texture("Texture1", ShaderStages.Fragment)
+					.Sampler("Texture1Sampler", ShaderStages.Fragment).Build() 
+			};
 		}
 	}
 }

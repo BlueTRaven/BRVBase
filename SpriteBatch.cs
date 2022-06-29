@@ -10,6 +10,13 @@ namespace BRVBase
 {
 	public class SpriteBatch
 	{
+		public struct SpriteBatchResources
+        {
+			public ShaderResourceManager ManagerWithViewProj;
+			public ShaderResourceManager ManagerWithTextures;
+			public IList<ShaderResourceManager> AllManagers;
+        }
+
 		public enum TextureType
 		{
 			OneTexture,
@@ -47,6 +54,7 @@ namespace BRVBase
 		private bool begin;
 		private Matrix4x4 viewProj;
 		private PipelineProgram program;
+		private SpriteBatchResources resources;
 		private FastList<DefaultVertexDefinitions.VertexPositionTextureColor> vertices = new FastList<DefaultVertexDefinitions.VertexPositionTextureColor>();
 		private FastList<uint> indices = new FastList<uint>();
 		private uint lastIndex = 1;
@@ -74,7 +82,7 @@ namespace BRVBase
 			fence = factory.CreateFence(false);
 		}
 
-		public void Begin(Matrix4x4 viewProj, PipelineProgram program, RgbaFloat? clearColor = null)
+		public void Begin(Matrix4x4 viewProj, PipelineProgram program, SpriteBatchResources resources, RgbaFloat? clearColor = null)
 		{
 			if (begin)
 			{
@@ -85,6 +93,7 @@ namespace BRVBase
 			lastIndex = 0;
 
 			this.program = program;
+			this.resources = resources;
 
 			commandList.Begin();
 			program.Bind(commandList);
@@ -95,7 +104,8 @@ namespace BRVBase
 			}
 
 			this.viewProj = viewProj;
-			program.GetShader().SetViewProj(commandList, viewProj);
+			resources.ManagerWithViewProj.Set("ViewProj", viewProj, ShaderStages.Vertex, commandList);
+			//program.GetShader().SetViewProj(commandList, viewProj);
 		}
 
 		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color)
@@ -247,11 +257,14 @@ namespace BRVBase
 				return;
 
 			if (currentTextureType == TextureType.OneTexture)
-				program.GetShader().SetTexture(0, currentTexture);
+				resources.ManagerWithTextures.Set("Texture1", currentTexture, ShaderStages.Fragment, commandList);
+			//program.GetShader().SetTexture(0, currentTexture);
 			else if (currentTextureType == TextureType.TextureCollection)
-				currentTextureCollection.SetTextures(program.GetShader());
+				currentTextureCollection.SetTextures(resources.ManagerWithTextures, commandList);
+			//currentTextureCollection.SetTextures(program.GetShader());
 
-			program.BindShader(commandList);
+			program.GetShader().Bind(commandList, resources.AllManagers);
+			//program.BindShader(commandList);
 
 			if (vertexBuffer == null || indexBuffer == null || vertices.Buffer.Length > currentVertexBufferSize || indices.Buffer.Length > currentIndexBufferSize)
 			{

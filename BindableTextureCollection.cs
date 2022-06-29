@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Veldrid;
 
 namespace BRVBase
 {
@@ -45,12 +46,13 @@ namespace BRVBase
 			else return ref firstHandle.Get();
 		}
 
-		public void SetTextures(ShaderBase shader)
+		public void SetTextures(ShaderResourceManager manager, CommandList commandList)
 		{
 			int lastTex = 0;
 			for (int i = 0; i < textures.Count; i++)
 			{
-				shader.SetTexture(i, textures[i]);
+				manager.Set("Texture" + i, textures[i], ShaderStages.Fragment, commandList);
+				//shader.SetTexture(i, textures[i]);
 				lastTex++;
 			}
 
@@ -59,7 +61,8 @@ namespace BRVBase
 			{
 				int index = i - lastTex;
 
-				shader.SetTexture(i, textureHandles[index].Get());
+				manager.Set("Texture" + i, textureHandles[i].Get(), ShaderStages.Fragment, commandList);
+				//shader.SetTexture(i, textureHandles[index].Get());
 			}
 		}
 	}

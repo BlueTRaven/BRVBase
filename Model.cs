@@ -265,20 +265,24 @@ namespace BRVBase
 				DefaultVertexDefinitions.VertexPositionTextureColor.GetLayout(), indexBuffer, (uint)indices.Length, new BoundingBox(new Vector3(0, 0, 0), new Vector3(width, height, 0)));
 		}
 
-		public static void Draw(Model model, CommandList commandList, Camera camera, PipelineProgram program, TextureAndSampler? texture, Matrix4x4? modelMat = null)
+		public static void Draw(Model model, CommandList commandList, Camera camera, Matrix4x4? transform, TextureAndSampler? texture, ModelResources resources)
 		{
-			if (modelMat.HasValue)
-				program.GetShader().SetModel(commandList, modelMat.Value);
+			if (transform.HasValue)
+				resources.ManagerWithModel.Set("Model", transform.Value, ShaderStages.Vertex, commandList);
 			if (texture.HasValue)
-				program.GetShader().SetTexture(0, texture.Value);
+				resources.ManagerWithTexture.Set(resources.TextureName, texture.Value, ShaderStages.Fragment, commandList);
 
 			if (camera != null)
-				program.GetShader().SetViewProj(commandList, camera.GetView() * camera.GetProjection());
+				resources.ManagerWithViewProj.Set("ViewProj", camera.GetView() * camera.GetProjection(), ShaderStages.Vertex, commandList);
 
 			if (model.indexBuffer == null)
 			{
-				program.Bind(commandList);
-				program.BindShader(commandList);
+				resources.Program.Bind(commandList);
+				//program.Bind(commandList);
+				//uniformViewProj.Bind(commandList, 0);
+				//uniformModel.bind(commandList, 1);
+				resources.Program.GetShader().Bind(commandList, resources.AllManagers);
+				//program.BindShader(commandList);
 
 				model.Bind(commandList);
 
@@ -306,16 +310,18 @@ namespace BRVBase
 				commandList.DrawIndexed(group.Num, 1, group.Offset, 0, 0);
 			}*/
 
-			program.Bind(commandList);
-			program.BindShader(commandList);
+			resources.Program.Bind(commandList);
+			resources.Program.GetShader().Bind(commandList, resources.AllManagers);
+			//program.BindShader(commandList);
 
 			model.Bind(commandList);
 			commandList.DrawIndexed((uint)model.NumIndices);
 		}
 
-		public static void DrawWireframe(Model model, Model cubeModel, CommandList commandList, Camera camera, PipelineProgram program, TextureAndSampler texture, Matrix4x4? modelMat = null)
+		//Draws a wireframe bounding box with the given bounds.
+		public static void DrawWireframeBoundingBox(Model model, Model cubeModel, CommandList commandList, Camera camera, TextureAndSampler? texture, Matrix4x4? modelMat, ModelResources drawCommand)
 		{
-			program.Bind(commandList);
+			drawCommand.Program.Bind(commandList);
 			if (modelMat.HasValue)
 			{
 				float scaleX = model.BoundingBox.PositionB.X - model.BoundingBox.PositionA.X;
@@ -323,22 +329,24 @@ namespace BRVBase
 				float scaleZ = model.BoundingBox.PositionB.Z - model.BoundingBox.PositionA.Z;
 
 				Vector3 center = model.BoundingBox.GetCenter();
-				program.GetShader().SetModel(commandList, Matrix4x4.CreateScale(scaleX / 2f, scaleY / 2f, scaleZ / 2f) * Matrix4x4.CreateTranslation(center) * modelMat.Value);
-			}
-			program.GetShader().SetTexture(0, texture);
-			program.GetShader().SetViewProj(commandList, camera.GetView() * camera.GetProjection());
-			program.BindShader(commandList);
+				drawCommand.ManagerWithModel.Set("Model", Matrix4x4.CreateScale(scaleX / 2f, scaleY / 2f, scaleZ / 2f) * 
+					Matrix4x4.CreateTranslation(center) * modelMat.Value, ShaderStages.Vertex, commandList);
+                //program.GetShader().SetModel(commandList, Matrix4x4.CreateScale(scaleX / 2f, scaleY / 2f, scaleZ / 2f) * Matrix4x4.CreateTranslation(center) * modelMat.Value);
+            }
+			if (texture.HasValue)
+				drawCommand.ManagerWithTexture.Set(drawCommand.TextureName, texture.Value, ShaderStages.Fragment, commandList);
+			//program.GetShader().SetTexture(0, texture);
+
+			drawCommand.ManagerWithViewProj.Set("ViewProj", camera.GetView() * camera.GetProjection(), ShaderStages.Vertex, commandList);
+			drawCommand.Program.GetShader().Bind(commandList, drawCommand.AllManagers);
+			//program.GetShader().SetViewProj(commandList, camera.GetView() * camera.GetProjection());
+			//program.BindShader(commandList);
 
 			cubeModel.Bind(commandList);
 
 			if (cubeModel.indexBuffer != null && cubeModel.NumIndices > 0)
 				commandList.DrawIndexed((uint)cubeModel.NumIndices);
 			else commandList.Draw(cubeModel.NumVertices);
-		}
-
-		public static void DrawFacingQuad(float width, float height, PipelineProgram program, TextureAndSampler texture)
-		{
-
 		}
 	}
 }

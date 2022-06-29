@@ -9,7 +9,7 @@ using Veldrid;
 
 namespace BRVBase
 {
-	public class ShaderUniformManager : IDisposable
+	public class ShaderResourceManager : IDisposable
 	{
 		public readonly struct UniformValidator
         {
@@ -47,8 +47,12 @@ namespace BRVBase
 			}
 		}
 
+		public string Name;
+
 		private DeviceBuffer bufferVertex;
 		private DeviceBuffer bufferFragment;
+		private Dictionary<string, BindableResource> otherResourcesVertex = new Dictionary<string, BindableResource>();
+		private Dictionary<string, BindableResource> otherResourcesFragment = new Dictionary<string, BindableResource>();
 		private Dictionary<string, Uniform> uniformsVertex = new Dictionary<string, Uniform>();
 		private Dictionary<string, Uniform> uniformsFragment = new Dictionary<string, Uniform>();
 		private HashSet<string> dirtyUniforms = new HashSet<string>();
@@ -57,6 +61,8 @@ namespace BRVBase
 
 		private ResourceLayout layout;
 		private ResourceSet set;
+		private bool setDirty;
+		private bool uniformsCreated;
 		private readonly ResourceFactory factory;
 		private readonly GraphicsDevice device;
 		private string vertexName;
@@ -64,7 +70,7 @@ namespace BRVBase
 
 		private bool hasVertexStage;
 		private bool hasFragmentStage;
-        
+
 		private bool disposedValue;
 
         //A dictionary of available uniforms.
@@ -72,18 +78,25 @@ namespace BRVBase
         //If a validator does not exist, it will not validate.
         private readonly Dictionary<string, UniformValidator> validator;
 
-		/// <summary>
-		/// Creates a new ShaderUniformManager, which manages device buffers for vertex and fragment shaders.
-		/// </summary>
-		/// <param name="factory"></param>
-		/// <param name="device"></param>
-		/// <param name="vertexName">The name of the vertex shader's uniform. May be null in the case where the shader does not have one.</param>
-		/// <param name="fragName">The name of the fragment shader's uniform. May be null in the case where the shader does not have one.</param>
-		/// <param name="validator">A dictionary of names:validators which are responsible for validating whether a uniform exists or not.</br>
-		/// Leave out to perform no validation.</br>
-		/// //TODO: This should only be usable on debug mode.</param>
-		public ShaderUniformManager(ResourceFactory factory, GraphicsDevice device, string vertexName, string fragName, Dictionary<string, UniformValidator> validator = null)
+        public bool IsDisposed()
+        {
+			return disposedValue;
+        }
+
+        /// <summary>
+        /// Creates a new ShaderUniformManager, which manages device buffers for vertex and fragment shaders.
+        /// </summary>
+        /// <param name="factory"></param>
+        /// <param name="device"></param>
+        /// <param name="vertexName">The name of the vertex shader's uniform. May be null in the case where the shader does not have one.</param>
+        /// <param name="fragName">The name of the fragment shader's uniform. May be null in the case where the shader does not have one.</param>
+        /// <param name="validator">A dictionary of names:validators which are responsible for validating whether a uniform exists or not.</br>
+        /// Leave out to perform no validation.</br>
+        /// //TODO: This should only be usable on debug mode.</param>
+        public ShaderResourceManager(ResourceLayout layout, ResourceFactory factory, GraphicsDevice device, string vertexName, string fragName, Dictionary<string, UniformValidator> validator = null)
 		{
+			this.layout = layout;
+
 			this.factory = factory;
 			this.device = device;
 			this.vertexName = vertexName;
@@ -97,139 +110,184 @@ namespace BRVBase
 			this.validator = validator;
 		}
 
-		//Use this function to initialize arrays to an empty value, as we cannot initialize them to null with Set.
-		public void InitArr<T>(string name, uint length, ShaderStages stage, CommandList commandList = null) where T : struct
-        {
-			if (!uniformsVertex.ContainsKey(name))
-			{
-				if (stage == ShaderStages.Vertex)
-				{
-					if (Validate(name, typeof(T[]), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
+		public void Assign<T>(string name, ShaderStages stage, CommandList commandList = null, T? defaultValue = null) where T : struct
+		{
+			Dictionary<string, Uniform> dict = null;
+			ref uint offset = ref offsetVertex;
 
-						Uniform uniform = new Uniform(name, Array.Empty<T>(), typeof(T[]), (int)length, (uint)(size * length), offsetVertex, stage);
-						uniformsVertex.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetVertex += (uint)(size * length);
-					}
-					else ErrorInvalid(name, typeof(T[]));
+			if (stage == ShaderStages.Vertex)
+			{
+				dict = uniformsVertex;
+				offset = ref offsetVertex;
+			}
+			else if (stage == ShaderStages.Fragment)
+			{
+				dict = uniformsFragment;
+				offset = ref offsetFragment;
+			}
+
+			if (!dict.ContainsKey(name))
+			{
+				if (Validate(name, typeof(T), stage))
+				{
+					uint size = GetShaderSafeSize<T>();
+
+					Uniform uniform = new Uniform(name, defaultValue.GetValueOrDefault(new T()), typeof(T), 0, size, offset, stage);
+					dict.Add(name, uniform);
+					//A new uniform has been added, therefore the buffer and set needs to be recreated.
+					//CreateAndUploadUniformBuffers(commandList);
+					offset += size;
 				}
+				else ErrorInvalid(name, typeof(T));
 			}
 			else
 			{
 				//If it does exist, don't do anything
-				Console.WriteLine("Tried to run InitArr on value that is already initialized. Use this function once only!");
+				Console.WriteLine("Tried to run Assign on value that is already initialized. Use this function once only!");
+			}
+		}
+
+		//Assigns an array. It will contain no data until a Set is called on it.
+		public void AssignArr<T>(string name, uint length, ShaderStages stage, CommandList commandList = null) where T : struct
+        {
+			Dictionary<string, Uniform> dict = null;
+			ref uint offset = ref offsetVertex;
+
+			if (stage == ShaderStages.Vertex)
+			{
+				dict = uniformsVertex;
+				offset = ref offsetVertex;
+			}
+			else if (stage == ShaderStages.Fragment)
+			{
+				dict = uniformsFragment;
+				offset = ref offsetFragment;
 			}
 
-			if (!uniformsFragment.ContainsKey(name))
+			if (!dict.ContainsKey(name))
 			{
-				if (stage == ShaderStages.Fragment)
+				if (Validate(name, typeof(T[]), stage))
 				{
-					if (Validate(name, typeof(T[]), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
+					uint size = GetShaderSafeSize<T>();
 
-						Uniform uniform = new Uniform(name, Array.Empty<T>(), typeof(T[]), (int)length, (uint)(size * length), offsetFragment, stage);
-						uniformsFragment.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetFragment += (uint)(size * length);
-					}
-					else ErrorInvalid(name, typeof(T[]));
+					Uniform uniform = new Uniform(name, Array.Empty<T>(), typeof(T[]), (int)length, (uint)(size * length), offset, stage);
+					dict.Add(name, uniform);
+					//A new uniform has been added, therefore the buffer and set needs to be recreated.
+					//CreateAndUploadUniformBuffers(commandList);
+					offset += (uint)(size * length);
 				}
+				else ErrorInvalid(name, typeof(T[]));
 			}
 			else
-            {
-				Console.WriteLine("Tried to run InitArr on value that is already initialized. Use this function once only!");
-            }
+			{
+				//If it does exist, don't do anything
+				Console.WriteLine("Tried to run AssignArr on value that is already initialized. Use this function once only!");
+			}
+		}
+
+		public void AssignTexture(string name, ShaderStages stage, CommandList commandList = null)
+        {
+			Dictionary<string, BindableResource> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = otherResourcesVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = otherResourcesFragment;
+
+			if (!dict.ContainsKey(name))
+			{
+				if (Validate(name, typeof(Texture), stage))
+				{
+					dict.Add(name, null);
+					//A new uniform has been added, therefore the buffer and set needs to be recreated.
+					//CreateAndUploadUniformBuffers(commandList);
+				}
+				else ErrorInvalid(name, typeof(Texture));
+			}
+			else
+			{
+			}
+		}
+
+		public void AssignSampler(string name, ShaderStages stage, CommandList commandList = null)
+		{
+			Dictionary<string, BindableResource> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = otherResourcesVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = otherResourcesFragment;
+
+			if (!dict.ContainsKey(name))
+			{
+				if (Validate(name, typeof(Sampler), stage))
+				{
+					dict.Add(name, null);
+					//A new uniform has been added, therefore the buffer and set needs to be recreated.
+					//CreateAndUploadUniformBuffers(commandList);
+				}
+				else ErrorInvalid(name, typeof(Sampler));
+			}
+			else
+			{
+			}
+		}
+
+		public void AssignTextureAndSampler(string name, ShaderStages stage, CommandList commandList = null)
+		{
+			AssignTexture(name, stage, commandList);
+			AssignSampler(name + "Sampler", stage, commandList);
 		}
 
 		//Sets the uniform and immediately updates/uploads the buffer.
 		public void Set<T>(string name, T value, ShaderStages stage, CommandList commandList = null) where T : struct
         {
-			if (!uniformsVertex.ContainsKey(name))
-			{
-				if (stage == ShaderStages.Vertex)
-				{
-					if (Validate(name, typeof(T), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
+			Dictionary<string, Uniform> dict = null;
 
-						Uniform uniform = new Uniform(name, value, typeof(T), 0, size, offsetVertex, stage);
-						uniformsVertex.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetVertex += size;
-					}
-					else ErrorInvalid(name, typeof(T));
-				}
-			}
-			else
+			if (stage == ShaderStages.Vertex)
+				dict = uniformsVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = uniformsFragment;
+
+			if (dict.ContainsKey(name))
 			{
 				uint size = GetShaderSafeSize<T>();
 
-				uniformsVertex[name] = new Uniform(name, value, typeof(T), 0, size, uniformsVertex[name].Offset, stage);
+				dict[name] = new Uniform(name, value, typeof(T), 0, size, dict[name].Offset, stage);
 
-				//Update the one part of the buffer
-				Upload(uniformsVertex[name], commandList);
+				//Update the one part of the buffer. Run immediately.
+				Upload(dict[name], commandList);
 			}
-
-			if (!uniformsFragment.ContainsKey(name))
+            else
             {
-				if (stage == ShaderStages.Fragment)
-				{
-					if (Validate(name, typeof(T), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
-
-						Uniform uniform = new Uniform(name, value, typeof(T), 0, size, offsetFragment, stage);
-						uniformsFragment.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetFragment += size;
-					}
-					else ErrorInvalid(name, typeof(T));
-				}
-			}
-			else
-			{
-				uint size = GetShaderSafeSize<T>();
-
-				uniformsFragment[name] = new Uniform(name, value, typeof(T), 0, size, uniformsFragment[name].Offset, stage);
-
-				Upload(uniformsFragment[name], commandList);
-			}
+				Console.WriteLine("Tried to set uniform {0} of type {1} in stage {2}, but this name has not been assigned. Did you forget an assign in the shader?", name, typeof(T), stage);
+            }
 		}
 
-		//Sets the uniform and immediately updates/uploads the buffer.
+		//Sets the uniform array and immediately updates/uploads the buffer.
 		public void Set<T>(string name, T[] value, ShaderStages stage, CommandList commandList = null) where T : struct
 		{
-			if (!uniformsVertex.ContainsKey(name))
-			{
-				if (stage == ShaderStages.Vertex)
-				{
-					if (Validate(name, typeof(T[]), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
+			Dictionary<string, Uniform> dict = null;
+			ref uint offset = ref offsetVertex;
 
-						Uniform uniform = new Uniform(name, value, typeof(T[]), 0, (uint)(size * value.Length), offsetVertex, stage);
-						uniformsVertex.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetVertex += (uint)(size * value.Length);
-					}
-					else ErrorInvalid(name, typeof(T[]));
-				}
+			if (stage == ShaderStages.Vertex)
+			{
+				dict = uniformsVertex;
+				offset = ref offsetVertex;
 			}
-			else
+			else if (stage == ShaderStages.Fragment)
+			{
+				dict = uniformsFragment;
+				offset = ref offsetFragment;
+			}
+
+			if (dict.ContainsKey(name))
 			{
 				uint size = GetShaderSafeSize<T>();
 
-				uint previousLen = (uint)((T[])uniformsVertex[name].Value).Length;
+				uint previousLen = (uint)((T[])dict[name].Value).Length;
 				if (previousLen == 0)
-					previousLen = (uint)uniformsVertex[name].ArrayLength;
+					previousLen = (uint)dict[name].ArrayLength;
 				previousLen *= size;
 
 				if (previousLen != size * value.Length)
@@ -238,47 +296,85 @@ namespace BRVBase
 					return;
                 }
 
-				uniformsVertex[name] = new Uniform(name, value, typeof(T[]), 0, (uint)(size * value.Length), uniformsVertex[name].Offset, stage);
+				dict[name] = new Uniform(name, value, typeof(T[]), (int)previousLen, previousLen, dict[name].Offset, stage);
 
-				Upload(uniformsVertex[name], commandList);
-			}
-
-			if (!uniformsFragment.ContainsKey(name))
-			{
-				if (stage == ShaderStages.Fragment)
-				{
-					if (Validate(name, typeof(T[]), stage))
-					{
-						uint size = GetShaderSafeSize<T>();
-
-						Uniform uniform = new Uniform(name, value, typeof(T[]), 0, (uint)(size * value.Length), offsetFragment, stage);
-						uniformsFragment.Add(name, uniform);
-						//A new uniform has been added, therefore the buffer and set needs to be recreated.
-						CreateAndUploadBuffer(commandList);
-						offsetFragment += (uint)(size * value.Length);
-					}
-					else ErrorInvalid(name, typeof(T[]));
-				}
+				Upload(dict[name], commandList);
 			}
 			else
 			{
-				uint size = GetShaderSafeSize<T>();
-
-				uint previousLen = (uint)((T[])uniformsVertex[name].Value).Length;
-				if (previousLen == 0)
-					previousLen = (uint)uniformsVertex[name].ArrayLength;
-				previousLen *= size;
-
-				if (previousLen != size * value.Length)
-				{
-					ErrorSize(name, (int)previousLen, (int)size * value.Length);
-					return;
-				}
-
-				uniformsFragment[name] = new Uniform(name, value, typeof(T[]), 0, (uint)(size * value.Length), uniformsFragment[name].Offset, stage);
-
-				Upload(uniformsFragment[name], commandList);
+				Console.WriteLine("Tried to set uniform {0} of type {1}, but this name has not been assigned. Did you forget an assign in the shader?", name, typeof(T[]));
 			}
+		}
+
+		public void Set(string name, Texture texture, ShaderStages stage, CommandList commandList = null)
+        {
+			Dictionary<string, BindableResource> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = otherResourcesVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = otherResourcesFragment;
+
+			if (dict.ContainsKey(name))
+			{
+				dict[name] = texture;
+				setDirty = true;
+			}
+            else
+            {
+				Console.WriteLine("Tried to set texture {0}, but this name has not been assigned. Did you forget an assign in the shader?", name);
+            }
+		}
+
+		public void Set(string name, Sampler sampler, ShaderStages stage, CommandList commandList = null)
+		{
+			Dictionary<string, BindableResource> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = otherResourcesVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = otherResourcesFragment;
+
+			if (dict.ContainsKey(name))
+			{
+				dict[name] = sampler;
+				setDirty = true;
+			}
+			else
+			{
+				Console.WriteLine("Tried to set sampler {0}, but this name has not been assigned. Did you forget an assign in the shader?", name);
+			}
+		}
+
+		public void Set(string name, TextureAndSampler textureAndSampler, ShaderStages stage, CommandList commandList = null)
+		{
+			Dictionary<string, BindableResource> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = otherResourcesVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = otherResourcesFragment;
+
+			if (dict.ContainsKey(name))
+			{
+				dict[name] = textureAndSampler.texture;
+				dict[name + "Sampler"] = textureAndSampler.sampler;
+				setDirty = true;
+			}
+		}
+
+		public T Get<T>(string name, ShaderStages stage)
+        {
+			Dictionary<string, Uniform> dict = null;
+
+			if (stage == ShaderStages.Vertex)
+				dict = uniformsVertex;
+			else if (stage == ShaderStages.Fragment)
+				dict = uniformsFragment;
+
+			if (dict.ContainsKey(name))
+				return (T)dict[name].Value;
+			else return default(T);
 		}
 
 		private bool Validate(string name, Type type, ShaderStages stage)
@@ -291,7 +387,7 @@ namespace BRVBase
 				return false;
 			}
 
-			//If we don't, we just assume it exists.
+			//If we don't, we just assume the value exists.
 			return true;
 		}
 
@@ -307,21 +403,17 @@ namespace BRVBase
 			Console.WriteLine("Attempted to resize uniform {0} from size {1} to {2}. Resizing is an invalid operation.", name, oldSize, newSize);
 		}
 
-		//Create and upload the layouts, buffers, and sets.
-		//Run this if the layout is dirty.
+		//Create and upload the uniform buffers.
 		//Everything needs to be reuploaded if this is run!
-		private void CreateAndUploadBuffer(CommandList commandList = null)
+		private void CreateAndUploadUniformBuffers(CommandList commandList = null)
 		{
+			uniformsCreated = true;
+
 			//dispose of old buffer and set since we're going to be replacing it.
 			if (bufferVertex != null)
 				bufferVertex.Dispose();
 			if (bufferFragment != null)
 				bufferFragment.Dispose();
-
-			if (layout != null)
-				layout.Dispose();
-			if (set != null)
-				set.Dispose();
 
 			bufferVertex = BuildBuffer(uniformsVertex.Values.ToList());
 			bufferFragment = BuildBuffer(uniformsFragment.Values.ToList());
@@ -338,19 +430,46 @@ namespace BRVBase
 				Upload(uniform, commandList);
 			}
 
-			var layoutBuilder = new ResourceLayoutBuilder(factory);
+			//layout should already exist
+			/*var layoutBuilder = new ResourceLayoutBuilder(factory);
 			if (uniformsVertex.Count > 0)
 				layoutBuilder.Uniform(vertexName, ShaderStages.Vertex);
 			if (uniformsFragment.Count > 0)
 				layoutBuilder.Uniform(fragName, ShaderStages.Fragment);
-			layout = layoutBuilder.Build();
+			layout = layoutBuilder.Build();*/
 
+		}
+
+		private void CreateResourceSet()
+		{
+			if (set != null)
+				set.Dispose();
+			
 			//TODO optimize this, maybe find a way to use a span? I don't like the allocation here.
-			List<DeviceBuffer> bindables = new List<DeviceBuffer>();
+			List<BindableResource> bindables = new List<BindableResource>();
 			if (bufferVertex != null)
 				bindables.Add(bufferVertex);
 			if (bufferFragment != null)
 				bindables.Add(bufferFragment);
+			//TODO find some way of ordering buffers?
+			if (otherResourcesVertex.Count > 0)
+			{
+				foreach (var kvp in otherResourcesVertex)
+				{
+					if (kvp.Value != null)
+						bindables.Add(kvp.Value);
+					else Console.WriteLine("Tried to create a resource set with bindable name {0}. This value has been assigned but not set (it is null!)!", kvp.Key);
+				}
+			}
+			if (otherResourcesFragment.Count > 0)
+			{
+				foreach (var kvp in otherResourcesFragment)
+				{
+					if (kvp.Value != null)
+						bindables.Add(kvp.Value);
+					else Console.WriteLine("Tried to create a resource set with bindable name {0}. This value has been assigned but not set (it is null!)!", kvp.Key);
+				}
+			}
 			set = factory.CreateResourceSet(new ResourceSetDescription(layout, bindables.ToArray()));
 		}
 
@@ -386,7 +505,7 @@ namespace BRVBase
 				else if (uniform.Value is int i)
 					builder = builder.Int();
 				else if (uniform.Value is int[] iArr)
-					builder = builder.FloatArr(iArr.Length > 0 ? iArr.Length : uniform.ArrayLength);
+					builder = builder.IntArr(iArr.Length > 0 ? iArr.Length : uniform.ArrayLength);
 				//else if (uniform.Value is Matrix3x2 mat3x2)			//TODO implement
 				//builder = builder.Mat3x2();
 				//else if (uniform.Value is Matrix3x2[] mat3x2Arr)
@@ -402,6 +521,11 @@ namespace BRVBase
 
 		private void Upload(in Uniform uniform, CommandList commandList = null)
 		{
+			//Do nothing if uniforms are not yet created; this is an unnecessary upload call.
+			//We can wait instead until we Bind the shaders.
+			if (!uniformsCreated)
+				return;
+
 			//Gross else if statement, but being perfectly generic is a pain in the ass and will only make this code even harder to read,
 			//so this is what we're getting.
 			if (uniform.Value is Vector4 vec4)
@@ -485,6 +609,12 @@ namespace BRVBase
 
 		public void Bind(CommandList commandList, uint slot)
         {
+			if ((bufferVertex == null || bufferFragment == null) && !uniformsCreated)
+				CreateAndUploadUniformBuffers(commandList);
+			//We can't just reassign textures all willy nilly unfortunately, if they change we have to mark the set dirty and re-make it.
+			if (set == null || setDirty)
+				CreateResourceSet();
+
 			commandList.SetGraphicsResourceSet(slot, set);
         }
 
@@ -497,7 +627,7 @@ namespace BRVBase
 			float roundA = MathF.Round((float)size / 16f, MidpointRounding.ToPositiveInfinity);
 			//and round it to the nearest multiple of 16.
 			size = (uint)(roundA * 16);
-
+			
 			return size;
 		}
 
@@ -520,7 +650,7 @@ namespace BRVBase
             }
         }
 
-        ~ShaderUniformManager()
+        ~ShaderResourceManager()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
              Dispose(disposing: false);
@@ -531,6 +661,11 @@ namespace BRVBase
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public override string ToString()
+        {
+			return "Resource Manager '" + Name + "' - " + layout.Name;
         }
     }
 }

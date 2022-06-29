@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
@@ -38,14 +39,19 @@ namespace BRVBase.Shaders
 			return DefaultVertexDefinitions.VertexPositionNormalTextureColor.GetLayout();
 		}
 
-		protected override ResourceLayout CreateUserDefinedResourceLayout()
-		{
-			return null;
-		}
+        protected override ShaderResourceManager[] CreateResourceManagers(ResourceLayout[] layouts)
+        {
+			ShaderResourceManager[] managers = new ShaderResourceManager[1];
+			managers[0] = new ShaderResourceManager(layouts[0], factory, device, "Default", null);
+			managers[0].Assign<Matrix4x4>("ViewProj", ShaderStages.Vertex);
+			managers[0].Assign<Matrix4x4>("Model", ShaderStages.Vertex);
 
-		protected override ResourceSet CreateUserDefinedResourceSet()
-		{
-			return null;
-		}
-	}
+			return managers;
+        }
+
+        protected override ResourceLayout[] CreateResourceLayouts()
+        {
+			return new ResourceLayout[1] { new ResourceLayoutBuilder(factory).Uniform("Default", ShaderStages.Vertex).Build() };
+        }
+    }
 }

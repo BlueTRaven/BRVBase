@@ -22,7 +22,7 @@ namespace BRVBase
 			renderer = new FontTextureRenderer(spriteBatch, device, factory);
 		}
 
-		public void Begin(Matrix4x4 viewProj, PipelineProgram program, RgbaFloat? clearColor = null)
+		public void Begin(Matrix4x4 viewProj, PipelineProgram program, SpriteBatch.SpriteBatchResources resources, RgbaFloat? clearColor = null)
 		{
 			if (begin)
 			{
@@ -31,7 +31,7 @@ namespace BRVBase
 
 			begin = true;
 
-			spriteBatch.Begin(viewProj, program, clearColor);
+			spriteBatch.Begin(viewProj, program, resources, clearColor);
 		}
 
 		public void DrawString(DynamicSpriteFont font, string str, Vector2 position, RgbaFloat color)

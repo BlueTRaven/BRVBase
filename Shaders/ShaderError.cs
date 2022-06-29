@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Veldrid;
@@ -34,19 +35,19 @@ namespace BRVBase.Shaders
 			return new Shader[] { vertexShader, fragmentShader };
 		}
 
-		public override void SetTexture(int index, TextureAndSampler texture)
-		{
-			//Do nothing, can't bind textures
-		}
+        protected override ResourceLayout[] CreateResourceLayouts()
+        {
+			return new ResourceLayout[1] { new ResourceLayoutBuilder(factory).Uniform("Default").Build() };
+        }
 
-		protected override ResourceLayout CreateUserDefinedResourceLayout()
+        protected override ShaderResourceManager[] CreateResourceManagers(ResourceLayout[] layouts)
 		{
-			return null;
-		}
+			ShaderResourceManager[] managers = new ShaderResourceManager[1];
 
-		protected override ResourceSet CreateUserDefinedResourceSet()
-		{
-			return null;
-		}
-	}
+			managers[0] = new ShaderResourceManager(layouts[0], factory, device, "Default", null);
+			managers[0].Assign<Matrix4x4>("ViewProj", ShaderStages.Vertex);
+
+			return managers;
+        }
+    }
 }

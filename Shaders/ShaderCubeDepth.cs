@@ -12,18 +12,10 @@ namespace BRVBase.Shaders
     [Shader("vertex_cubedepth", "frag_cubedepth")]
     public class ShaderCubeDepth : ShaderBase
     {
-		public ShaderUniformManager UniformManager;
+		public ShaderResourceManager UniformManager;
 
         public ShaderCubeDepth(GraphicsDevice device, ResourceFactory factory) : base(device, factory, 0)
         {
-            UniformManager = new ShaderUniformManager(factory, device, "CubeSet", null, new Dictionary<string, ShaderUniformManager.UniformValidator>()
-            {
-                { "CubeViewProj", new ShaderUniformManager.UniformValidator(typeof(Matrix4x4[]), ShaderStages.Vertex) },
-				{ "Face", new ShaderUniformManager.UniformValidator(typeof(int), ShaderStages.Vertex) }
-            });
-
-			UniformManager.InitArr<Matrix4x4>("CubeViewProj", 5, ShaderStages.Vertex);
-			UniformManager.Set("Face", 0, ShaderStages.Vertex);
         }
 
         public override Shader[] LoadShaders()
@@ -33,7 +25,7 @@ namespace BRVBase.Shaders
 
 			ShaderDescription vertexDesc = new ShaderDescription(ShaderStages.Vertex, Encoding.UTF8.GetBytes(vertex.Get().Content), "main");
 			ShaderDescription fragDesc = new ShaderDescription(ShaderStages.Fragment, Encoding.UTF8.GetBytes(fragment.Get().Content), "main");
-
+			
 			var spirvOut = factory.CreateFromSpirv(vertexDesc, fragDesc);
 			Shader vertexShader = spirvOut[0];
 			vertexShader.Name = "Vertex Cube Depth";
@@ -42,21 +34,35 @@ namespace BRVBase.Shaders
 
 			return new Shader[] { vertexShader, fragmentShader };
 		}
+		
+        protected override ShaderResourceManager[] CreateResourceManagers(ResourceLayout[] layouts)
+        {
+			ShaderResourceManager[] managers = new ShaderResourceManager[1];
+			managers[0] = new ShaderResourceManager(layouts[0], factory, device, "Default", null);
+			managers[0].Assign<Matrix4x4>("ViewProj", ShaderStages.Vertex);
+			managers[0].Assign<Matrix4x4>("Model", ShaderStages.Vertex);
 
-		//We do have to use a bigger vertex definition because otherwise we get improper stride
-		public override VertexLayoutDescription GetVertexLayout()
+			managers[0].AssignArr<Matrix4x4>("CubeViewProj", 5, ShaderStages.Vertex);
+			managers[0].Assign<int>("Face", ShaderStages.Vertex);
+
+			return managers;
+        }
+
+        protected override ResourceLayout[] CreateResourceLayouts()
+        {
+			ResourceLayout[] layouts = new ResourceLayout[1];
+
+			ResourceLayoutBuilder builder = new ResourceLayoutBuilder(factory);
+			builder.Uniform("Default", ShaderStages.Vertex);
+			layouts[0] = builder.Build();
+
+			return layouts;
+        }
+
+        //We do have to use a bigger vertex definition because otherwise we get improper stride
+        public override VertexLayoutDescription GetVertexLayout()
 		{
 			return DefaultVertexDefinitions.VertexPositionNormalTextureColor.GetLayout();
-		}
-
-		protected override ResourceLayout CreateUserDefinedResourceLayout()
-		{
-			return UniformManager.GetLayout();
-		}
-
-		protected override ResourceSet CreateUserDefinedResourceSet()
-		{
-			return UniformManager.GetSet();
 		}
 	}
 }

@@ -5,17 +5,12 @@ layout(set = 0, binding = 0) uniform Default
 {
 	mat4 ViewProj;
 	mat4 Model;
-};
-
-layout(set = 1, binding = 0) uniform CubeSet 
-{
 	mat4 CubeViewProj[5];
 	uint Face;
-	//vec3 Pad1;
 };
 
 layout(location = 0) in vec3 Position;
-layout(location = 1) out flat uint outFace;
+layout(location = 0) out flat uint outFace;
 
 void main()
 {
@@ -32,5 +27,5 @@ void main()
 	if (Face == 5)
 		gl_Position = CubeViewProj[4] * Model * vec4(Position, 1);
 		
-	outFace = Face.x;
+	outFace = Face;
 }

@@ -72,7 +72,7 @@ namespace BRVBase
 
 		//Whew, that's a mouthful.
 		//If the default state has not already been set, this sets the default state to the current state.
-		public void SetCurrentStateAsDefaultIfNotAlreadySet()
+		public void SetCurrentStateAsDefaultIfNotAlreadySet(Span<ShaderResourceManager> uniforms)
 		{
 			if (defaultPipeline != null)
 				SetDefaultPipelineState();
@@ -138,7 +138,7 @@ namespace BRVBase
 
 			ourCommandList.Begin();
 			
-			Bind(ourCommandList, null);
+			Bind(ourCommandList);
 
 			for (int i = 0; i < this.Framebuffer.ColorTargets.Count; i++)
 				Clear(ourCommandList, clearColor, i);
@@ -150,24 +150,32 @@ namespace BRVBase
 			device.SubmitCommands(ourCommandList, fence);
 		}
 
-		public void Bind(CommandList commandList, Span<ShaderUniformManager> uniforms)
+		public void Bind(CommandList commandList)
 		{
+			if (disposedValue)
+				throw new ObjectDisposedException(this.ToString());
+			if (Framebuffer.IsDisposed)
+				throw new ObjectDisposedException(Framebuffer.ToString());
+
 			if (pipelineTriangleTopology == null || pipelineDirty)
 			{
-				CreatePipeline(uniforms);
+				CreatePipeline();
 			}
+
+			if (pipelineTriangleTopology.IsDisposed)
+				throw new ObjectDisposedException(pipelineTriangleTopology.ToString());
 
 			commandList.SetFramebuffer(Framebuffer);
 			commandList.SetPipeline(pipelineTriangleTopology);
 		}
 
-		private void CreatePipeline(Span<ShaderUniformManager> uniforms)
+		private void CreatePipeline()
 		{
 			pipelineTriangleTopology?.Dispose();
 			pipelineLineTopology?.Dispose();
 
 			Shader[] shaders = GetShader().GetShaders();
-			ResourceLayout[] layout = GetShader().GetLayout(uniforms);
+			ResourceLayout[] layout = GetShader().GetResourceLayouts();
 
 			pipelineTriangleTopology = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription()
 			{
@@ -178,19 +186,7 @@ namespace BRVBase
 
 				ResourceLayouts = layout,
 				ShaderSet = new ShaderSetDescription(new VertexLayoutDescription[] { shader.GetVertexLayout() }, shaders),
-				Outputs = Framebuffer.OutputDescription
-			});
-
-			pipelineLineTopology = factory.CreateGraphicsPipeline(new GraphicsPipelineDescription()
-			{
-				BlendState = blendState.GetValueOrDefault(BlendStateDescription.SingleAlphaBlend),
-				DepthStencilState = depthStencilState.GetValueOrDefault(DepthStencilStateDescription.Disabled),
-				RasterizerState = rasterizerState.GetValueOrDefault(RasterizerStateDescription.Default),
-				PrimitiveTopology = PrimitiveTopology.LineList,
-
-				ResourceLayouts = layout,
-				ShaderSet = new ShaderSetDescription(new VertexLayoutDescription[] { shader.GetVertexLayout() }, shaders),
-				Outputs = Framebuffer.OutputDescription
+				Outputs = Framebuffer.OutputDescription,
 			});
 
 			pipelineDirty = false;
@@ -281,6 +277,11 @@ namespace BRVBase
         //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         //     Dispose(disposing: false);
         // }
+
+		public bool IsDisposed()
+        {
+			return disposedValue;
+        }
 
         public void Dispose()
         {
