@@ -41,18 +41,18 @@ namespace BRVBase
 			this.device = device;
 		}
 
-		protected override Model Load(string baseDir, string name)
+		protected override Model Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
 				List<Vector3> positions = new List<Vector3>();
 				List<Vector2> texCoords = new List<Vector2>();
 				List<Vector3> normals = new List<Vector3>();
 				List<ModelParseFace> faces = new List<ModelParseFace>();
 
-				string raw = File.ReadAllText(baseDir + name + extension);
+				string raw = File.ReadAllText(file.FullPath);
 
 				var tokens = Parser.GetTokens(raw);
 
@@ -271,7 +271,7 @@ namespace BRVBase
 						maxZ = vertex.position.Z;
 				}
 
-				Model model = Model.Load(name, factory, device, vertices, DefaultVertexDefinitions.VertexPositionNormalTextureColor.SIZE, 
+				Model model = Model.Load(file.Name, factory, device, vertices, DefaultVertexDefinitions.VertexPositionNormalTextureColor.SIZE, 
 					DefaultVertexDefinitions.VertexPositionNormalTextureColor.GetLayout(), indices, new BoundingBox(new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ)), topology: topology);
 
 				return model;

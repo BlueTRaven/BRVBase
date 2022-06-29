@@ -19,6 +19,7 @@ namespace BRVBase
 		public string textureName;
 		private TextureAndSampler texture;
 		public Rectangle sourceRectangle;
+		public Rectangle collisionAABB;
 
 		public float drawPriority;
 
@@ -37,9 +38,20 @@ namespace BRVBase
 			this.textureName = textureName;
 			this.sourceRectangle = sourceRectangle;
 
+			TmxObject obj = null;
+			if (tile.ObjectGroups != null && tile.ObjectGroups.Count > 0 && tile.ObjectGroups[0].Objects != null && tile.ObjectGroups[0].Objects.Count > 0)
+				obj = tile.ObjectGroups[0].Objects[0];
+
+			if (obj != null)
+				collisionAABB = new Rectangle((int)obj.X, (int)obj.Y, (int)obj.Width, (int)obj.Height);
+
 			this.type = tile.Type;
-			
+
 			properties = tile.Properties;
+	
+			if (GetPropertyBool("draw", true))
+				this.drawPriority = 0;
+			else this.drawPriority = -1;
 		}
 
 		/*public void Initialize(float drawPriority, Texture2D texture, Rectangle sourceRectangle, Dictionary<string, string> properties)

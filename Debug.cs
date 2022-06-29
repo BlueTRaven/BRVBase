@@ -55,7 +55,7 @@ namespace BRVBase
 			{
 				if (ImGui.Begin("Debug"))
 				{
-					ImGui.Text("FPS:" + string.Format("{0:0.000}", (float)Runner.FramesPerSecond));
+					ImGui.Text("FPS:" + string.Format("{0:0.000}", (float)Runner.FrameCounter.AverageFramesPerSecond));
 					ImGui.Text("DT (Draw):" + string.Format("{0:0.000}", dt.Delta));
 					ImGui.Text("DT (Update):" + string.Format("{0:0.000}", lastUpdateDelta));
 					ImGui.End();

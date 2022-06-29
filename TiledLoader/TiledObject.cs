@@ -72,13 +72,13 @@ namespace BRVBase
 	public class TiledObject
 	{
 		public string layer;
-		public Dictionary<string, string> properties;
+		public Dictionary<string, string> Properties;
 
 		public int id;
-		public string name;
+		public string Name;
 		public string objType;
 
-		public Rectangle position;
+		public Rectangle Position;
 
 		//public TiledText text;
 
@@ -89,11 +89,11 @@ namespace BRVBase
 		public void LoadObj(TmxObject obj)
 		{
 			this.id = obj.Id;
-			this.name = obj.Name;
+			this.Name = obj.Name;
 			//if (obj.Text != null)
 				//text = new TiledText(obj.Text);
 
-			position = new Rectangle((int)obj.X, (int)obj.Y, (int)obj.Width, (int)obj.Height);
+			Position = new Rectangle((int)obj.X, (int)obj.Y, (int)obj.Width, (int)obj.Height);
 
 			GetProperties(obj);
 		}
@@ -102,46 +102,46 @@ namespace BRVBase
 		{
 			//NOTE: we need to do this this way otherwise the properties dictionary will remain the TiledSharp version (for some reason???)
 			//A little inefficient but hey this will only be done content compile time
-			properties = new Dictionary<string, string>();
+			Properties = new Dictionary<string, string>();
 			foreach (string key in obj.Properties.Keys)
-				this.properties.Add(key, obj.Properties[key]);
+				this.Properties.Add(key, obj.Properties[key]);
 
 			objType = obj.Type;
 		}
 
 		public bool GetPropertyBool(string name, bool def = false)
 		{
-			if (properties.ContainsKey(name))
-				return bool.Parse(properties[name]);
+			if (Properties.ContainsKey(name))
+				return bool.Parse(Properties[name]);
 			else return def;
 		}
 
 		public float GetPropertyFloat(string name, float def = 0)
 		{
-			if (properties.ContainsKey(name))
-				return float.Parse(properties[name]);
+			if (Properties.ContainsKey(name))
+				return float.Parse(Properties[name]);
 			else return def;
 		}
 
 		public int GetPropertyInt(string name, int def = 0)
 		{
-			if (properties.ContainsKey(name))
-				return int.Parse(properties[name]);
+			if (Properties.ContainsKey(name))
+				return int.Parse(Properties[name]);
 			else return def;
 		}
 
 		public string GetPropertyString(string name, string def = "")
 		{
-			if (properties.ContainsKey(name))
-				return properties[name];
+			if (Properties.ContainsKey(name))
+				return Properties[name];
 			else return def;
 		}
 
 		public RgbaFloat GetPropertyColor(string name, RgbaFloat def)
 		{
-			if (properties.ContainsKey(name))
+			if (Properties.ContainsKey(name))
 			{
-				string str = properties[name].Substring(1);
+				string str = Properties[name].Substring(1);
 				string aStr = str.Substring(0, 2);
 				string rStr = str.Substring(2, 2);
 				string gStr = str.Substring(4, 2);
@@ -159,7 +159,7 @@ namespace BRVBase
 
 		public override string ToString()
 		{
-			return "Tiled Object: " + name + " type: " + objType + " layer: " + layer;
+			return "Tiled Object: " + Name + " type: " + objType + " layer: " + layer;
 		}
 	}
 }

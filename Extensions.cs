@@ -23,9 +23,19 @@ namespace BRVBase
 				   a.Top < b.Bottom;
 		}
 
-		public static Point ToPointNumerics(this Vector2 vector)
+		public static Point ToPointVeldrid(this Vector2 vector)
 		{
 			return new Point((int)vector.X, (int)vector.Y);
+		}
+
+		public static Vector2 ToVector2(this Point point)
+		{
+			return new Vector2(point.X, point.Y);
+		}
+
+		public static RectangleF ToRectangleF(this Rectangle rect)
+		{
+			return new RectangleF(rect.X, rect.Y, rect.Width, rect.Height);
 		}
 
 		#region Random

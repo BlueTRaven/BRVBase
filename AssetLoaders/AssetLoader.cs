@@ -56,6 +56,7 @@ namespace BRVBase
 
 	public abstract class AssetLoader<TAsset> where TAsset : IAsset
 	{
+		private Dictionary<string, LoadableFile> loadableFiles;
 		private Dictionary<string, AssetHandle<TAsset>> handles = new Dictionary<string, AssetHandle<TAsset>>();
 		private Dictionary<string, TAsset> assets = new Dictionary<string, TAsset>();
 
@@ -100,6 +101,8 @@ namespace BRVBase
 				}
 				else Console.WriteLine("path {0} does not yet exist for asset loader {1}.", baseDirs[i], this.GetType().Name);
 			}
+
+			GetAllLoadableFiles();
 		}
 
 		public AssetHandle<TAsset> GetHandle(string name)
@@ -114,15 +117,7 @@ namespace BRVBase
 		{
 			if (!assets.ContainsKey(name))
 			{
-				TAsset asset = default;
-				for (int i = 0; i < baseDirs.Length; i++)
-				{
-					asset = Load(baseDirs[i], name);
-
-					if (asset != null && asset.GetName() != null)
-						break;
-				}
-
+				TAsset asset = Load(loadableFiles[name]);
 				assets.Add(name, asset);
 
 				PostLoad(asset);
@@ -198,8 +193,73 @@ namespace BRVBase
 
 		}
 
-		protected abstract TAsset Load(string baseDir, string name);
-
 		protected virtual void PostLoad(TAsset asset) { }
+
+		protected abstract TAsset Load(LoadableFile file);
+
+		public string GetExtension()
+		{
+			return extension;
+		}
+
+		public LoadableFile[] GetAllLoadableFiles()
+		{
+			if (loadableFiles == null)
+			{
+				loadableFiles = new Dictionary<string, LoadableFile>();
+
+				for (int i = 0; i < baseDirs.Length; i++)
+				{
+					DirectoryInfo di = new DirectoryInfo(baseDirs[i]);
+
+					if (!di.Exists)
+					{
+						Console.WriteLine("Warning: Asset loader {0} tried to read from directory {1}, but this directory does not exist.", this, di);
+						continue;
+					}
+                        var fi = di.GetFiles("*" + extension, SearchOption.AllDirectories);
+
+					List<LoadableFile> copyList = new List<LoadableFile>();
+					//loadableFiles = new string[fi.Length];
+
+					for (int j = 0; j < fi.Length; j++)
+					{
+						FileInfo fileInfo = fi[j];
+
+						if (fileInfo.Extension != extension)
+							continue;
+
+						copyList.Add(new LoadableFile(Path.GetFileNameWithoutExtension(fileInfo.Name), fileInfo.FullName));
+					}
+
+					foreach (LoadableFile file in copyList)
+					{
+						loadableFiles.Add(file.Name, file);
+					}
+				}
+			}
+
+			return loadableFiles.Values.ToArray();
+		}
+
+		protected bool FileExists(string baseDir, string name, out string fullPath)
+		{
+			if (!File.Exists(baseDir + name + extension))
+			{
+				foreach (string dir in Directory.EnumerateDirectories(baseDir))
+				{
+					if (FileExists(dir + "\\", name, out fullPath))
+						return true;
+				}
+
+				fullPath = "";
+				return false;
+			}
+			else
+			{
+				fullPath = baseDir + name + extension;
+				return true;
+			}
+		}
 	}
 }

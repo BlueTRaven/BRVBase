@@ -39,13 +39,13 @@ namespace BRVBase
 		{
 		}
 
-		protected override ShaderWrapper Load(string baseDir, string name)
+		protected override ShaderWrapper Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				string text = File.ReadAllText(baseDir + name + extension);
+				string text = File.ReadAllText(file.FullPath);
 
 				ShaderStages stage = ShaderStages.None;
 
@@ -87,7 +87,7 @@ namespace BRVBase
 					}
 				}
 
-				return new ShaderWrapper(name, stage, entry, contentMinusStage);
+				return new ShaderWrapper(file.Name, stage, entry, contentMinusStage);
 			}
 
 			return default;

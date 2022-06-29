@@ -45,7 +45,8 @@ namespace BRVBase
 		private DeviceBuffer indexBuffer;
 		private readonly ResourceFactory factory;
 		private readonly GraphicsDevice device;
-		private readonly CommandList commandList;
+		private CommandList givenCommandList;
+		private readonly CommandList ourCommandList;
 		private readonly Fence fence;
 
 		private int currentVertexBufferSize;
@@ -78,8 +79,34 @@ namespace BRVBase
 			this.device = device;
 			this.factory = factory;
 
-			commandList = factory.CreateCommandList();
+			ourCommandList = factory.CreateCommandList();
 			fence = factory.CreateFence(false);
+		}
+
+		public void Begin(CommandList commandList, Matrix4x4 viewProj, PipelineProgram program, SpriteBatchResources resources, RgbaFloat? clearColor = null)
+		{
+			if (begin)
+			{
+				throw new Exception();
+			}
+
+			begin = true;
+			lastIndex = 0;
+
+
+			givenCommandList = commandList;
+			//givenCommandList.Begin();
+			program.Bind(givenCommandList);
+
+			if (clearColor.HasValue)
+			{
+				givenCommandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
+			}
+
+			this.program = program;
+			this.viewProj = viewProj;
+			this.resources = resources;
+			resources.ManagerWithViewProj.Set("ViewProj", viewProj, ShaderStages.Vertex, commandList);
 		}
 
 		public void Begin(Matrix4x4 viewProj, PipelineProgram program, SpriteBatchResources resources, RgbaFloat? clearColor = null)
@@ -92,30 +119,46 @@ namespace BRVBase
 			begin = true;
 			lastIndex = 0;
 
-			this.program = program;
-			this.resources = resources;
 
-			commandList.Begin();
-			program.Bind(commandList);
+			givenCommandList = ourCommandList;
+			givenCommandList.Begin();
+			program.Bind(givenCommandList);
 
 			if (clearColor.HasValue)
 			{
-				commandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
+				givenCommandList.ClearColorTarget(0, clearColor.GetValueOrDefault());
 			}
 
+			this.program = program;
 			this.viewProj = viewProj;
-			resources.ManagerWithViewProj.Set("ViewProj", viewProj, ShaderStages.Vertex, commandList);
+			this.resources = resources;
+
+			resources.ManagerWithViewProj.Set("ViewProj", viewProj, ShaderStages.Vertex, givenCommandList);
 			//program.GetShader().SetViewProj(commandList, viewProj);
 		}
 
-		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color)
+		public void Draw(Matrix3x2 transform, TextureAndSampler texture, RgbaFloat color, bool flipX = false, bool flipY = false)
 		{
-			Draw(transform, texture, new Rectangle(0, 0, texture.width, texture.height), color);
+			Draw(transform, texture, new Rectangle(0, 0, texture.width, texture.height), color, flipX, flipY);
 		}
 
-		public void Draw(Matrix3x2 transform, TextureAndSampler texture, Rectangle sourceRect, RgbaFloat color)
+		public void Draw(Matrix3x2 transform, TextureAndSampler texture, Rectangle sourceRect, RgbaFloat color, bool flipX = false, bool flipY = false)
 		{
-			inputInstance.Add(new InputInstance()
+			if (!begin)
+				throw new Exception();
+
+			if (flipX)
+			{
+				sourceRect.X = sourceRect.X + sourceRect.Width;
+				sourceRect.Width = -sourceRect.Width;
+			}
+			if (flipY)
+			{
+				sourceRect.Y = sourceRect.Y + sourceRect.Height;
+				sourceRect.Height = -sourceRect.Height;
+			}
+
+			inputInstance.Add(new InputInstance() 
 			{
 				textureType = TextureType.OneTexture,
 				transform = transform,
@@ -127,6 +170,9 @@ namespace BRVBase
 
 		public void Draw(Matrix3x2 transform, BindableTextureCollection textureCollection, Rectangle sourceRect, RgbaFloat color)
 		{
+			if (!begin)
+				throw new Exception();
+
 			inputInstance.Add(new InputInstance()
 			{
 				textureType = TextureType.TextureCollection,
@@ -135,6 +181,73 @@ namespace BRVBase
 				sourceRect = sourceRect,
 				color = color
 			});
+		}
+
+		public void DrawLine(Vector2 a, Vector2 b, float width, TextureAndSampler texture, RgbaFloat color, bool center = false)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 dir = b - a;
+			float dist = dir.Length();
+
+			float angR = MathF.Atan2(dir.Y, dir.X);
+
+			Matrix3x2 transform = Matrix3x2.Identity;
+			transform *= Matrix3x2.CreateScale(dist / texture.width, width);
+			if (center)
+				transform *= Matrix3x2.CreateTranslation(0, -((texture.height * width) / 2));
+			transform *= Matrix3x2.CreateRotation(angR);
+			transform *= Matrix3x2.CreateTranslation(a);
+
+			inputInstance.Add(new InputInstance()
+			{
+				textureType = TextureType.OneTexture,
+				texture = texture,
+				transform = transform,
+				sourceRect = new Rectangle(0, 0, texture.width, texture.height),
+				color = color
+			});
+		}
+
+		public void DrawRectangle(Rectangle rect, TextureAndSampler texture, RgbaFloat color)
+        {
+			Draw(Matrix3x2.CreateScale(rect.Width, rect.Height) * Matrix3x2.CreateTranslation(rect.X, rect.Y), texture, color);
+        }
+
+		public void DrawHollowRectangle(Rectangle rect, float width, TextureAndSampler texture, RgbaFloat color)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 a = new Vector2(rect.Left, rect.Top);
+			Vector2 b = new Vector2(rect.Right, rect.Top);
+			Vector2 c = new Vector2(rect.Right, rect.Bottom);
+			Vector2 d = new Vector2(rect.Left, rect.Bottom);
+
+			DrawLine(a, b, width, texture, color);
+			DrawLine(b, c, width, texture, color);
+			DrawLine(c, d, width, texture, color);
+			DrawLine(d, a, width, texture, color);
+		}
+
+		public void DrawHollowCircle(Vector2 point, float radius, int segments, float width, TextureAndSampler texture, RgbaFloat color)
+		{
+			if (!begin)
+				throw new Exception();
+
+			Vector2 last = new Vector2(point.X + radius, point.Y);
+
+			for (int i = 0; i < segments + 1; i++)
+			{
+				float ang = (((float)i / (float)segments) * 360f) * (float)Constants.DEG_TO_RAD;
+
+				Vector2 vec = new Vector2(MathF.Cos(ang), MathF.Sin(ang)) * radius + point;
+
+				DrawLine(last, vec, width, texture, color);
+
+				last = vec;
+			}
 		}
 
 		private void AddVertex(int index, Vector2 uv, Vector2 size, in Matrix3x2 transform, RgbaFloat color, float depth = 0)
@@ -172,14 +285,14 @@ namespace BRVBase
 
 				if (submitImmediately)
 				{
-					commandList.End();
-					device.SubmitCommands(commandList, fence);
+					givenCommandList.End();
+					device.SubmitCommands(givenCommandList, fence);
 				}
 			}
 
 			begin = false;
 
-			return commandList;
+			return givenCommandList;
 		}
 
 		public CommandList GetCommandList()
@@ -191,7 +304,7 @@ namespace BRVBase
 
 				return null;
 			}
-			return commandList;
+			return givenCommandList;
 		}
 
 		private void ReallyDraw()
@@ -257,14 +370,13 @@ namespace BRVBase
 				return;
 
 			if (currentTextureType == TextureType.OneTexture)
-				resources.ManagerWithTextures.Set("Texture1", currentTexture, ShaderStages.Fragment, commandList);
+				resources.ManagerWithTextures.Set("Texture1", currentTexture, ShaderStages.Fragment, givenCommandList);
 			//program.GetShader().SetTexture(0, currentTexture);
 			else if (currentTextureType == TextureType.TextureCollection)
-				currentTextureCollection.SetTextures(resources.ManagerWithTextures, commandList);
+				currentTextureCollection.SetTextures(resources.ManagerWithTextures, givenCommandList);
 			//currentTextureCollection.SetTextures(program.GetShader());
 
-			program.GetShader().Bind(commandList, resources.AllManagers);
-			//program.BindShader(commandList);
+			program.GetShader().Bind(givenCommandList, resources.AllManagers);
 
 			if (vertexBuffer == null || indexBuffer == null || vertices.Buffer.Length > currentVertexBufferSize || indices.Buffer.Length > currentIndexBufferSize)
 			{
@@ -284,13 +396,13 @@ namespace BRVBase
 				indexBuffer = factory.CreateBuffer(new BufferDescription((uint)(sizeof(uint) * currentIndexBufferSize), BufferUsage.IndexBuffer));
 			}
 
-			commandList.UpdateBuffer(vertexBuffer, 0, vertices.Buffer);
-			commandList.UpdateBuffer(indexBuffer, 0, indices.Buffer);
+			givenCommandList.UpdateBuffer(vertexBuffer, 0, vertices.Buffer);
+			givenCommandList.UpdateBuffer(indexBuffer, 0, indices.Buffer);
 
-			commandList.SetVertexBuffer(0, vertexBuffer);
-			commandList.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
+			givenCommandList.SetVertexBuffer(0, vertexBuffer);
+			givenCommandList.SetIndexBuffer(indexBuffer, IndexFormat.UInt32);
 
-			commandList.DrawIndexed((uint)indices.Length);
+			givenCommandList.DrawIndexed((uint)indices.Length);
 
 			vertices.Clear();
 			indices.Clear();

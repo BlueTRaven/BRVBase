@@ -10,10 +10,10 @@ namespace BRVBase
 	//Most of this content has no place in a base framework.
 	public class Constants
 	{
-		public const int WINDOW_WIDTH = 960;
-		public const int WINDOW_HEIGHT = 540;
-		public const int INTERNAL_WIDTH = 480;
-		public const int INTERNAL_HEIGHT = 270;
+		public const uint WINDOW_WIDTH = 960;
+		public const uint WINDOW_HEIGHT = 540;
+		public const uint INTERNAL_WIDTH = 320;//480;
+		public const uint INTERNAL_HEIGHT = 224;//270;
 		public const string ASSETS_BASE_DIR = "./Assets/";
 
 		public const float WINDOW_SCALE_WIDTH = (float)INTERNAL_WIDTH / (float)WINDOW_WIDTH;

@@ -36,9 +36,9 @@ namespace BRVBase
 		/// Load a tmx map. Loads all related assets as well.
 		/// </summary>
 		/// <param name="map">The TmxMap asset to import data from.</param>
-		public TiledMap LoadMap(TmxMap map)
+		public TiledMap LoadMap(TmxMap map, string name)
 		{
-			TiledMap outMap = new TiledMap(PropertyHelper.GetPropertyString(map.Properties, "name", "none"));
+			TiledMap outMap = new TiledMap(name);
 
 			PropertyHelper.CopyProperties(outMap.Properties, map.Properties);
 
@@ -84,6 +84,8 @@ namespace BRVBase
 				}
 			}
 
+			outMap.SetTileset(allTiles);
+
 			int layerIndex = 0;
 			foreach (ITmxLayer layer in map.Layers)
 			{
@@ -118,7 +120,7 @@ namespace BRVBase
 
 					LoadMessage = "Initializing tiles...";
 
-					Dictionary<int, TiledTile> setTiles = new Dictionary<int, TiledTile>();
+					//Dictionary<int, TiledTile> setTiles = new Dictionary<int, TiledTile>();
 
 					iter = 0;
 					foreach (TmxLayerTile layerTile in tileLayer.Tiles)

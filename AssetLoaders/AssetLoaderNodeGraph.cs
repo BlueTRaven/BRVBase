@@ -171,15 +171,15 @@ namespace BRVBase
 
 		private bool loadingDependency;
 
-		protected override NodeGraphAsset Load(string baseDir, string name)
+		protected override NodeGraphAsset Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				NodeGraphAsset nodeSet = new NodeGraphAsset(name);
+				NodeGraphAsset nodeSet = new NodeGraphAsset(file.Name);
 
-				string raw = File.ReadAllText(baseDir + name + extension);
+				string raw = File.ReadAllText(file.FullPath);
 
 				var tokens = Parser.GetTokens(raw);
 
@@ -225,7 +225,7 @@ namespace BRVBase
 							string a = currentPrefix + Parser.ExpectString(ref currentIndex, ref currentToken, tokens);
 							string bStr = Parser.ExpectString(ref currentIndex, ref currentToken, tokens);
 							string b = currentPrefix;
-							string bGraph = name;
+							string bGraph = file.Name;
 							bool bGraphSet = false;
 
 							if (bStr == "graph")
@@ -266,12 +266,12 @@ namespace BRVBase
 								}
 							}
 
-							NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(name, a, bGraph, b, type, weight);
+							NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(file.Name, a, bGraph, b, type, weight);
 							nodeSet.AddConnection(connection);
 
 							if (isSymmetrical)
 							{
-								connection = new NodeGraphAsset.Connection(name, b, bGraph, a, type, weight);
+								connection = new NodeGraphAsset.Connection(file.Name, b, bGraph, a, type, weight);
 								nodeSet.AddConnection(connection);
 							}
 
@@ -289,7 +289,7 @@ namespace BRVBase
 							{
 								string a = currentPrefix + i.ToString();
 								string b = currentPrefix + (i + 1).ToString();
-								NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(name, a, name, b, "default", 1);
+								NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(file.Name, a, file.Name, b, "default", 1);
 								nodeSet.AddConnection(connection);
 							}
 
@@ -306,7 +306,7 @@ namespace BRVBase
 								{
 									string a = currentPrefix + lasti.ToString();
 									string b = currentPrefix + firsti.ToString();
-									NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(name, a, name, b, "default", 1);
+									NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(file.Name, a, file.Name, b, "default", 1);
 								}
 								else if (content == "symmetrical")
 								{
@@ -314,7 +314,7 @@ namespace BRVBase
 									{
 										string a = currentPrefix + i.ToString();
 										string b = currentPrefix + (i - 1).ToString();
-										NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(name, a, name, b, "default", 1);
+										NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(file.Name, a, file.Name, b, "default", 1);
 										nodeSet.AddConnection(connection);
 									}
 								}
@@ -327,7 +327,7 @@ namespace BRVBase
 							string set = Parser.ExpectString(ref currentIndex, ref currentToken, tokens);
 							string transitionNode = Parser.ExpectString(ref currentIndex, ref currentToken, tokens);
 
-							NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(name, node, name, transitionNode, "transition", 1);
+							NodeGraphAsset.Connection connection = new NodeGraphAsset.Connection(file.Name, node, file.Name, transitionNode, "transition", 1);
 						}
 					}
 

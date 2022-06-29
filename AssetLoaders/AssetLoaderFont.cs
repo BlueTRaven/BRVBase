@@ -87,19 +87,19 @@ namespace BRVBase
 			public bool premult;
 		}
 
-		protected override Font Load(string baseDir, string name)
+		protected override Font Load(LoadableFile file)
 		{
-			if (File.Exists(baseDir + name + extension))
+			if (File.Exists(file.FullPath))
 			{
-				Util.WaitForFile(baseDir + name + extension);
+				Util.WaitForFile(file.FullPath);
 
-				var fontData = JsonSerializer.Deserialize<FontData>(File.ReadAllText(baseDir + name + extension), options);
+				var fontData = JsonSerializer.Deserialize<FontData>(File.ReadAllText(file.FullPath), options);
 
 				Font f = new Font(textureManager, fontData.blur, fontData.stroke, fontData.premult);
 
 				foreach (string fontName in fontData.fontFiles)
 				{
-					f.AddFont(File.ReadAllBytes(baseDir + fontName));
+					f.AddFont(File.ReadAllBytes(file.FullPath));
 				}
 
 				return f;
