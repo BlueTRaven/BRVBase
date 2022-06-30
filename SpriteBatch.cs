@@ -10,11 +10,16 @@ namespace BRVBase
 {
 	public class SpriteBatch
 	{
-		public struct SpriteBatchResources
+		public struct SpriteBatchResources : IShaderResourceGroup
         {
 			public ShaderResourceManager ManagerWithViewProj;
 			public ShaderResourceManager ManagerWithTextures;
 			public IList<ShaderResourceManager> AllManagers;
+
+            public IList<ShaderResourceManager> GetManagers()
+            {
+				return AllManagers;
+            }
         }
 
 		public enum TextureType

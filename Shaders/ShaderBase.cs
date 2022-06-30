@@ -23,7 +23,7 @@ namespace BRVBase
 			}
 		}
 
-		protected static List<WeakReference<ShaderResourceManager[]>> trackedManagers = new List<WeakReference<ShaderResourceManager[]>>();
+		protected List<WeakReference<ShaderResourceManager[]>> trackedManagers = new List<WeakReference<ShaderResourceManager[]>>();
 
 		private Shader[] shaders;
 

@@ -277,11 +277,11 @@ namespace BRVBase
 
 			if (model.indexBuffer == null)
 			{
-				resources.Program.Bind(commandList);
+				resources.Program().Bind(commandList);
 				//program.Bind(commandList);
 				//uniformViewProj.Bind(commandList, 0);
 				//uniformModel.bind(commandList, 1);
-				resources.Program.GetShader().Bind(commandList, resources.AllManagers);
+				resources.Program().GetShader().Bind(commandList, resources.AllManagers);
 				//program.BindShader(commandList);
 
 				model.Bind(commandList);
@@ -310,8 +310,8 @@ namespace BRVBase
 				commandList.DrawIndexed(group.Num, 1, group.Offset, 0, 0);
 			}*/
 
-			resources.Program.Bind(commandList);
-			resources.Program.GetShader().Bind(commandList, resources.AllManagers);
+			resources.Program().Bind(commandList);
+			resources.Program().GetShader().Bind(commandList, resources.AllManagers);
 			//program.BindShader(commandList);
 
 			model.Bind(commandList);
@@ -321,7 +321,7 @@ namespace BRVBase
 		//Draws a wireframe bounding box with the given bounds.
 		public static void DrawWireframeBoundingBox(Model model, Model cubeModel, CommandList commandList, Camera camera, TextureAndSampler? texture, Matrix4x4? modelMat, ModelResources drawCommand)
 		{
-			drawCommand.Program.Bind(commandList);
+			drawCommand.Program().Bind(commandList);
 			if (modelMat.HasValue)
 			{
 				float scaleX = model.BoundingBox.PositionB.X - model.BoundingBox.PositionA.X;
@@ -338,7 +338,7 @@ namespace BRVBase
 			//program.GetShader().SetTexture(0, texture);
 
 			drawCommand.ManagerWithViewProj.Set("ViewProj", camera.GetView() * camera.GetProjection(), ShaderStages.Vertex, commandList);
-			drawCommand.Program.GetShader().Bind(commandList, drawCommand.AllManagers);
+			drawCommand.Program().GetShader().Bind(commandList, drawCommand.AllManagers);
 			//program.GetShader().SetViewProj(commandList, camera.GetView() * camera.GetProjection());
 			//program.BindShader(commandList);
 

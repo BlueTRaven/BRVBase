@@ -665,7 +665,7 @@ namespace BRVBase
 
         public override string ToString()
         {
-			return "Resource Manager '" + Name + "' - " + layout.Name;
+			return string.Format("Resource Manager '{0}' (disposed: {1})", Name, disposedValue);
         }
     }
 }

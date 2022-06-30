@@ -12,7 +12,7 @@ namespace BRVBase
 {
 	public static class Gizmos
 	{
-		public struct GizmosResources
+		public struct GizmosResources : IShaderResourceGroup
         {
 			public ShaderResourceManager ManagerWithViewProj;
 			public ShaderResourceManager ManagerWithModel;
@@ -20,6 +20,16 @@ namespace BRVBase
 			public string TextureName;
 			public ShaderResourceManager ManagerWithTint;
 			public IList<ShaderResourceManager> AllManagers;
+
+            public bool AreManagersDisposed()
+            {
+				return AllManagers.All(x => x.IsDisposed());
+            }
+
+            public IList<ShaderResourceManager> GetManagers()
+            {
+				return AllManagers;
+            }
         }
 
 		private struct Render
@@ -45,7 +55,7 @@ namespace BRVBase
 
 		private static CommandList commandList;
 		private static Camera camera;
-		private static PipelineProgram program;
+		private static Func<PipelineProgram> program;
 		private static GizmosResources resources;
 		private static bool started;
 
@@ -86,7 +96,7 @@ namespace BRVBase
 			texture = ServiceManager.Instance.GetService<AssetManager>().TextureLoader.GetHandle("whitepixel").Get();
 		}
 
-		public static void Start(Camera camera, PipelineProgram program, GizmosResources resources)
+		public static void Start(Camera camera, Func<PipelineProgram> program, GizmosResources resources)
 		{
 			Gizmos.camera = camera;
 			Gizmos.program = program;
@@ -94,6 +104,19 @@ namespace BRVBase
 
 			if (!cachedModelResources.ContainsKey(resources))
 			{
+				cachedModelResources.Add(resources, new ModelResources()
+				{
+					Program = program,
+					AllManagers = resources.AllManagers,
+					ManagerWithModel = resources.ManagerWithModel,
+					ManagerWithTexture = resources.ManagerWithTexture,
+					ManagerWithViewProj = resources.ManagerWithViewProj,
+					TextureName = resources.TextureName
+				});
+			}
+			else if (cachedModelResources[resources].Program().IsDisposed())
+			{
+				cachedModelResources.Remove(resources);
 				cachedModelResources.Add(resources, new ModelResources()
 				{
 					Program = program,

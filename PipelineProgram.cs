@@ -238,7 +238,7 @@ namespace BRVBase
 			}
 		}
 
-        protected virtual void Dispose(bool disposing, bool withFramebuffer)
+        protected virtual void Dispose(bool disposing, bool withFramebuffer, bool withShader)
         {
             if (!disposedValue)
             {
@@ -267,6 +267,11 @@ namespace BRVBase
 					Framebuffer.Dispose();
                 }
 
+				if (withShader)
+                {
+					shader.Dispose();
+                }
+
 				disposedValue = true;
             }
         }
@@ -285,13 +290,13 @@ namespace BRVBase
 
         public void Dispose()
         {
-            Dispose(true, false);
+            Dispose(true, false, false);
             GC.SuppressFinalize(this);
         }
 
-		public void DisposeWithFramebuffer()
+		public void Dispose(bool withFramebuffer, bool withShader)
         {
-			Dispose(true, true);
+			Dispose(true, withFramebuffer, withShader);
 			GC.SuppressFinalize(this);
 		}
     }
